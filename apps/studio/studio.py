@@ -12,6 +12,7 @@ from core.config import *
 from prep import DataPrepPage
 from visualizer import VisualizerPage
 from analyzer import AnalysisPage
+from radar_analyzer import RadarAnalysisPage # <-- NEW: Import the radar module
 
 class UnifiedWorkstation(QMainWindow):
     def __init__(self):
@@ -44,14 +45,17 @@ class UnifiedWorkstation(QMainWindow):
         self.btn_prep = self._nav_btn("DATA STUDIO")
         self.btn_viz = self._nav_btn("VISUALIZER")
         self.btn_analysis = self._nav_btn("ANALYSIS")
+        self.btn_radar = self._nav_btn("RADAR ANALYSIS") # <-- NEW: Radar Button
         
         self.btn_prep.clicked.connect(lambda: self.switch_page(0))
         self.btn_viz.clicked.connect(lambda: self.switch_page(1))
         self.btn_analysis.clicked.connect(lambda: self.switch_page(2))
+        self.btn_radar.clicked.connect(lambda: self.switch_page(3)) # <-- NEW: Connect click
         
         nav_lay.addWidget(self.btn_prep)
         nav_lay.addWidget(self.btn_viz)
         nav_lay.addWidget(self.btn_analysis)
+        nav_lay.addWidget(self.btn_radar) # <-- NEW: Add to layout
         nav_lay.addStretch()
         
         l_ver = QLabel(VERSION)
@@ -64,10 +68,12 @@ class UnifiedWorkstation(QMainWindow):
         self.page_prep = DataPrepPage(self)
         self.page_viz = VisualizerPage(self) 
         self.page_analysis = AnalysisPage()
+        self.page_radar = RadarAnalysisPage(self) # <-- NEW: Initialize Radar Page
         
         self.stack.addWidget(self.page_prep)
         self.stack.addWidget(self.page_viz)
         self.stack.addWidget(self.page_analysis)
+        self.stack.addWidget(self.page_radar) # <-- NEW: Add to stack
         main_layout.addWidget(self.stack)
         
         self.switch_page(0)
@@ -88,7 +94,7 @@ class UnifiedWorkstation(QMainWindow):
         try: 
             self.page_viz.init_graphics()
         except Exception:
-            close_splash()
+            # Removed close_splash() if you don't have a splash screen defined
             traceback.print_exc()
 
     def switch_page(self, index):
@@ -96,6 +102,7 @@ class UnifiedWorkstation(QMainWindow):
         self.btn_prep.setChecked(index == 0)
         self.btn_viz.setChecked(index == 1)
         self.btn_analysis.setChecked(index == 2)
+        self.btn_radar.setChecked(index == 3) # <-- NEW: Toggle active state
         
     def keyPressEvent(self, event):
         if self.stack.currentIndex() == 1: 
@@ -112,7 +119,6 @@ class UnifiedWorkstation(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    close_splash()
     w = UnifiedWorkstation()
     w.show()
     sys.exit(app.exec())

@@ -1,191 +1,210 @@
 import sys
-import os
+import time
 import datetime
-import mediapipe
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap, QFont, QIcon
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QFrame, 
-                             QLabel, QLineEdit, QComboBox, QPushButton, QMessageBox, 
-                             QSizePolicy, QApplication)
+import logging
+import zmq
+import json
+import configparser
+import cv2
 
-from core.config import *
-from backend import CaptureThread
+from core.radar.base import parse_standard_frame
+from core.config import VERSION
+from core.storage import CameraSessionWriter, RadarSessionWriter
 
-class RecorderApp(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("OST Recorder")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
+log = logging.getLogger("Publisher")
 
-        if os.path.exists(ICON):
-            self.setWindowIcon(QIcon(ICON))
+# ─────────────────────────────────────────────────────────────────────────────
+#  Load Global Settings
+# ─────────────────────────────────────────────────────────────────────────────
+config = configparser.ConfigParser()
+config.read('settings.ini')
+
+HW_CFG_FILE = config['Hardware']['radar_cfg_file']
+HW_CLI_PORT = config['Hardware']['cli_port']
+HW_DATA_PORT = config['Hardware']['data_port']
+ZMQ_RADAR_PORT = config['Network'].get('zmq_port', '5555')
+ZMQ_CAM_PORT = config['Network'].get('zmq_camera_port', '5556')
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Hardware Connection Helpers
+# ─────────────────────────────────────────────────────────────────────────────
+def connect_radar():
+    from sensors.radar import RadarSensor
+    log.info("Connecting to Texas Instruments hardware...")
+    
+    cli, data = None, None
+    if HW_CLI_PORT.lower() != 'auto' and HW_DATA_PORT.lower() != 'auto':
+        cli, data = HW_CLI_PORT, HW_DATA_PORT
+    else:
+        log.info("Scanning for auto-assigned USB ports...")
+        cli, data = RadarSensor.find_ti_ports()
+    
+    if not cli or not data:
+        log.error("Auto-detection failed: No TI radar ports found. Please check connections.")
+        return None
+
+    log.info(f"Using CLI: {cli} | DATA: {data}")
+    
+    radar = RadarSensor(cli, data, HW_CFG_FILE)
+    radar.connect_and_configure()
+    
+    print("\n" + "="*40)
+    print(" RADAR CONFIGURATION LOADED")
+    print("="*40)
+    for key, value in radar.config.summary().items():
+        print(f" {key:<20}: {value}")
+    print("="*40 + "\n")
+    
+    return radar
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Stream Loops
+# ─────────────────────────────────────────────────────────────────────────────
+def run_radar_stream(zmq_context: zmq.Context, record: bool):
+    radar = connect_radar()
+    if radar is None: return
+
+    # ONLY bind the Radar port if this function is actually called
+    zmq_socket = zmq_context.socket(zmq.PUB)
+    zmq_socket.bind(f"tcp://*:{ZMQ_RADAR_PORT}")
+
+    writer = RadarSessionWriter(metadata=radar.config.summary()) if record else None
+    
+    if record: log.info(f"RECORD MODE: Broadcasting over ZMQ and saving to {writer.filepath}")
+    else: log.info("PREVIEW MODE: Broadcasting over ZMQ only (No disk writing).")
+
+    print("\n>>> RADAR STREAM ACTIVE. Press Ctrl+C to stop. <<<\n")
+    
+    try:
+        while True:
+            raw_bytes = radar.read_raw_frame()
+            if raw_bytes is None:
+                time.sleep(0.001)
+                continue
+
+            frame = parse_standard_frame(raw_bytes)
+            rdhm = frame.get("RDHM")
             
-        self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
-        self.setMinimumSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
-        self.setStyleSheet(CSS_MAIN_WINDOW)
-        
-        self.is_recording = False
-        self._init_ui()
-        
-        self.worker = CaptureThread()
-        self.worker.frame_ready.connect(self.update_video)
-        self.worker.stats_updated.connect(self.update_stats)
-        self.worker.error_occurred.connect(self.handle_error)
-        self.worker.ready.connect(self.hardware_ready)
-        self.worker.start()
+            if rdhm is not None:
+                zmq_socket.send(rdhm.tobytes())
+                if record: writer.write_frame(rdhm)
 
-    def _init_ui(self):
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        main_layout.setSpacing(0)
+    except KeyboardInterrupt:
+        log.info("Ctrl+C detected. Stopping radar stream...")
+    finally:
+        radar.close()
+        zmq_socket.close() # Safely release the port
+        if writer: writer.close()
+        time.sleep(0.5)
 
-        self.sidebar = QFrame()
-        self.sidebar.setObjectName("Sidebar")
-        self.sidebar.setFixedWidth(PANEL_WIDTH)
-        self.sidebar.setStyleSheet(CSS_SIDEBAR)
-        
-        side_layout = QVBoxLayout(self.sidebar)
-        side_layout.setContentsMargins(15, 20, 15, 30)
-        side_layout.setSpacing(5)
 
-        title = QLabel("OST RECORDER")
-        title.setStyleSheet(f"color: {ACCENT_COLOR}; border: none; ")
-        title.setFont(QFont("Segoe UI", 14, QFont.Weight.Bold))
-        side_layout.addWidget(title)
-        side_layout.addSpacing(10)
+def run_camera_stream(zmq_context: zmq.Context, record: bool):
+    log.info("Loading camera AI models...")
+    from sensors.realsense import RealSenseCamera
+    from core.depth import get_mean_depth, deproject_pixel_to_point
+    from core.pose import PoseEstimator
+    
+    # ONLY bind the Camera port if this function is actually called
+    zmq_socket = zmq_context.socket(zmq.PUB)
+    zmq_socket.bind(f"tcp://*:{ZMQ_CAM_PORT}")
 
-        self.inp_subject = self._add_input(side_layout, "Subject ID *", "e.g. S01")
-        self.inp_activity = self._add_input(side_layout, "Activity *", "e.g. Walking")
-        self.inp_temp = self._add_input(side_layout, "Room Temp (°C) *", "24.0")
+    writer = None
+    if record:
+        print("\n--- STARTING AUTOMATIC CAMERA RECORDING ---")
+        subj = "Auto"
+        act = "Camera"
+        meta = {"Date": datetime.datetime.now().isoformat()}
+        writer = CameraSessionWriter(subj, act, metadata=meta)
+        log.info(f"RECORD MODE: Broadcasting over ZMQ and saving to {writer.filepath}")
+    else:
+        log.info("PREVIEW MODE: Broadcasting over ZMQ only.")
 
-        side_layout.addWidget(QLabel("Date", styleSheet=CSS_HEADER))
-        self.lbl_date = QLabel(datetime.datetime.now().strftime("%Y-%m-%d"))
-        self.lbl_date.setStyleSheet(f"color: {TEXT_DIM};")
-        side_layout.addWidget(self.lbl_date)
+    cam = RealSenseCamera(width=640, height=480, fps=30)
+    pose = PoseEstimator(model_complexity=1)
 
-        side_layout.addWidget(QLabel("Pose Model", styleSheet=CSS_HEADER))
-        self.cmb_model = QComboBox()
-        self.cmb_model.addItems(["Lite", "Full", "Heavy"])
-        self.cmb_model.setCurrentIndex(1)
-        self.cmb_model.setStyleSheet(CSS_INPUT)
-        self.cmb_model.currentIndexChanged.connect(self.change_model)
-        side_layout.addWidget(self.cmb_model)
+    print("\n>>> CAMERA STREAM ACTIVE. Press Ctrl+C to stop. <<<\n")
+    try:
+        while True:
+            color_img, depth_frame = cam.get_frames()
+            if color_img is None:
+                continue
 
-        side_layout.addSpacing(10)
-        self.lbl_fps = QLabel("FPS: 00.0")
-        self.lbl_fps.setStyleSheet(f"color: {TEXT_MAIN}; border: none;")
-        side_layout.addWidget(self.lbl_fps)
-        
-        self.lbl_frames = QLabel("Frames: 0")
-        self.lbl_frames.setStyleSheet(f"color: {TEXT_DIM}; border: none;")
-        side_layout.addWidget(self.lbl_frames)
-
-        self.lbl_error = QLabel("")
-        self.lbl_error.setStyleSheet(f"color: {COLOR_ERROR}; font-size: 10px; border: none;")
-        side_layout.addWidget(self.lbl_error)
-
-        self.btn_record = QPushButton("RECORD")
-        self.btn_record.setFixedHeight(40)
-        self.btn_record.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_record.clicked.connect(self.toggle_recording)
-        self.btn_record.setEnabled(False)
-        self.btn_record.setStyleSheet(CSS_BTN_PRIMARY)
-        side_layout.addWidget(self.btn_record)
-
-        l_ver = QLabel(VERSION)
-        l_ver.setStyleSheet(f"color: {TEXT_DIM}; font-size: 10px; border: none; margin-top: 15px;")
-        l_ver.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        side_layout.addWidget(l_ver)
-
-        main_layout.addWidget(self.sidebar)
-
-        self.video_container = QWidget()
-        self.video_container.setStyleSheet(f"background-color: {BG_DARK};")
-        video_layout = QVBoxLayout(self.video_container)
-        video_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.lbl_video = QLabel("Booting hardware and AI models...")
-        self.lbl_video.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_video.setStyleSheet(f"color: {TEXT_DIM}; border: none;")
-        self.lbl_video.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
-        video_layout.addWidget(self.lbl_video)
-
-        main_layout.addWidget(self.video_container)
-
-    def _add_input(self, layout, label, placeholder):
-        layout.addWidget(QLabel(label, styleSheet=CSS_HEADER))
-        inp = QLineEdit()
-        inp.setPlaceholderText(placeholder)
-        inp.setStyleSheet(CSS_INPUT)
-        layout.addWidget(inp)
-        return inp
-
-    def hardware_ready(self):
-        self.lbl_video.setText("")
-        self.btn_record.setEnabled(True)
-
-    def change_model(self, index):
-        self.worker.model_complexity = index
-
-    def update_video(self, qt_img):
-        pixmap = QPixmap.fromImage(qt_img)
-        lbl_w = self.lbl_video.width()
-        lbl_h = self.lbl_video.height()
-        
-        if lbl_w > 0 and lbl_h > 0:
-            scaled_pixmap = pixmap.scaled(lbl_w, lbl_h, Qt.AspectRatioMode.KeepAspectRatio)
-            self.lbl_video.setPixmap(scaled_pixmap)
-
-    def update_stats(self, fps, frame_count):
-        self.lbl_fps.setText(f"FPS: {fps:.1f}")
-        if self.is_recording:
-            self.lbl_frames.setText(f"Frames: {frame_count}")
-            self.lbl_frames.setStyleSheet(f"color: {COLOR_ERROR}; font-weight: bold;")
-
-    def handle_error(self, err_msg):
-        QMessageBox.critical(self, "Hardware Error", f"The background worker crashed:\n{err_msg}")
-        self.close()
-
-    def toggle_recording(self):
-        if not self.is_recording:
-            s = self.inp_subject.text().strip()
-            a = self.inp_activity.text().strip()
-            t = self.inp_temp.text().strip()
-
-            if not all([s, a, t]):
-                self.lbl_error.setText("⚠ MISSING FIELDS")
-                return
-            self.lbl_error.setText("")
-
-            meta = {"Subject": s, "Activity": a, "Temp": t, "Date": datetime.datetime.now().isoformat()}
+            h, w, _ = color_img.shape
+            landmarks = pose.estimate(color_img)
             
-            self.worker.start_recording(s, a, meta)
-            self.is_recording = True
-            self._set_inputs_enabled(False)
-            
-            self.btn_record.setText("STOP")
-            self.btn_record.setStyleSheet(CSS_BTN_STOP)
-        else:
-            self.worker.stop_recording()
-            self.is_recording = False
-            self._set_inputs_enabled(True)
-            
-            self.lbl_frames.setStyleSheet(f"color: {TEXT_DIM};")
-            self.btn_record.setText("RECORD")
-            self.btn_record.setStyleSheet(CSS_BTN_PRIMARY)
+            frame_data = {"timestamp": time.time()}
+            depth_intrin = None
 
-    def _set_inputs_enabled(self, enabled):
-        for w in [self.inp_subject, self.inp_activity, self.inp_temp, self.cmb_model]:
-            w.setEnabled(enabled)
+            if depth_frame:
+                depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics
 
-    def closeEvent(self, event):
-        self.worker.stop_worker()
-        event.accept()
+            if landmarks:
+                for i, (lx, ly, lz) in enumerate(landmarks):
+                    cx, cy = int(lx), int(ly)
+                    if 0 <= cx < w and 0 <= cy < h:
+                        cv2.circle(color_img, (cx, cy), 3, (0, 255, 0), -1)
+                        
+                        if depth_intrin:
+                            dist = get_mean_depth(depth_frame, cx, cy, w, h)
+                            if dist:
+                                p = deproject_pixel_to_point(depth_intrin, cx, cy, dist)
+                                frame_data[f"j{i}_x"] = p[0]
+                                frame_data[f"j{i}_y"] = p[1]
+                                frame_data[f"j{i}_z"] = p[2]
+
+            ret, jpeg_buffer = cv2.imencode('.jpg', color_img, [int(cv2.IMWRITE_JPEG_QUALITY), 80])
+            
+            if ret:
+                zmq_socket.send_multipart([
+                    json.dumps(frame_data).encode('utf-8'),
+                    jpeg_buffer.tobytes()
+                ])
+
+            if record and writer:
+                writer.write_frame(frame_data)
+
+    except KeyboardInterrupt:
+        log.info("Ctrl+C detected. Stopping camera stream...")
+    finally:
+        cam.stop()
+        zmq_socket.close() # Safely release the port
+        if writer: writer.close()
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Main Application Menu
+# ─────────────────────────────────────────────────────────────────────────────
+def main():
+    context = zmq.Context()
+    
+    while True:
+        print("\n=========================================")
+        print(f"        OST PUBLISHER v{VERSION}       ")
+        print("=========================================")
+        print("RADAR OPTIONS:")
+        print("  1. Preview Radar")
+        print("  2. Record Radar")
+        print("\nCAMERA OPTIONS:")
+        print("  3. Preview Camera (MediaPipe)")
+        print("  4. Record Camera (MediaPipe)")
+        print("\nSYSTEM:")
+        print("  0. Exit")
+        
+        # Removed the \n inside input() to fix the space+enter glitch
+        print("Select an option (0-4):")
+        choice = input()
+        
+        if choice == '1': run_radar_stream(context, record=False)
+        elif choice == '2': run_radar_stream(context, record=True)
+        elif choice == '3': run_camera_stream(context, record=False)
+        elif choice == '4': run_camera_stream(context, record=True)
+        elif choice == '0':
+            print("Shutting down network and exiting...")
+            break
+        else: print("Invalid choice.")
+
+    context.term()
+    sys.exit(0)
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    close_splash()   
-    window = RecorderApp() 
-    window.show()
-    sys.exit(app.exec())
+    main()
