@@ -62,7 +62,7 @@ class OSTLauncher(QMainWindow):
 
         # 2. Viewer (Live GUI)
         self.btn_view = self._make_card("2. LIVE TELEMETRY", "Monitor Streams over Network", ACCENT)
-        self.btn_view.clicked.connect(lambda: self._run_tool("view.py", "view", is_cli=False))
+        self.btn_view.clicked.connect(lambda: self._run_tool("view.py", "view", is_cli=True))
         layout.addWidget(self.btn_view)
 
         # 3. Studio (Post-Processing GUI)
