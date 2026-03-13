@@ -1,22 +1,19 @@
-# Core UI & Visualization
-PyQt6
-pyqtgraph
+# OST Suite Requirements
+# UI and Graphics
+PyQt6==6.7.0
+pyqtgraph==0.13.3
 
-# Computer Vision & Hardware
-opencv-python
-pyrealsense2
-mediapipe == 0.10.21
+# Data Processing and Math
+numpy==1.26.4
+pandas==2.2.2
+scipy==1.13.1
+pyarrow==16.1.0
 
-# Data Processing & Storage
-numpy
-pandas
-pyarrow
+# Computer Vision and Sensors
+opencv-python==4.9.0.80
+mediapipe==0.10.21
+pyrealsense2==2.55.1.6486
 
-# Build System
-pyinstaller
-
-# Networking
-zmq
-
-# Serial Communication
-pyserial
+# Hardware and Networking
+pyserial==3.5
+pyzmq==26.0.3

@@ -1,11 +1,19 @@
+import traceback
+import pyqtgraph as pg
+
 from PyQt6.QtWidgets import QWidget, QFrame, QVBoxLayout, QHBoxLayout, QLabel
 from PyQt6.QtCore import QThread, pyqtSignal
 from core.ui.theme import *
-import pyqtgraph as pg
 
+# ── 1. Background Threading ──────────────────────────────────────────────────
 
 class HeavyTaskWorker(QThread):
-    """Runs heavy data/math tasks in the background without freezing the UI."""
+    """
+    Runs heavy data/math tasks in the background without freezing the Main UI thread.
+    This is the secret to keeping your application feeling fast and responsive 
+    even while loading 100MB Parquet files or running Matrix math.
+    """
+    # Signals allow the background thread to safely pass data back to the UI
     finished = pyqtSignal(object)  
     error = pyqtSignal(str)        
 
@@ -16,29 +24,37 @@ class HeavyTaskWorker(QThread):
         self.kwargs = kwargs
 
     def run(self):
+        """This executes automatically on a separate CPU core when .start() is called."""
         try:
+            # Execute the heavy math/loading function
             result = self.task_function(*self.args, **self.kwargs)
+            # Ship the result back to the UI
             self.finished.emit(result)
         except Exception as e:
-            import traceback
+            # Print the exact line where the math crashed to the terminal
             traceback.print_exc()
+            # Send the error string to the UI so it can show a Popup Message
             self.error.emit(str(e))
 
+# ── 2. Reusable UI Components ────────────────────────────────────────────────
+
 class MetricGraph(QWidget):
-    """Compact line graph for Studio Dashboard. Lazy-loads pyqtgraph."""
+    """
+    The compact, real-time line graphs used in the Visualizer Dashboard.
+    Designed to update 30 times a second without lagging.
+    """
     def __init__(self, title, color, min_v=0, max_v=180):
         super().__init__()
-        
-        # Lazy import to ensure fast application startup
-        import pyqtgraph as pg 
         
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 15) 
         layout.setSpacing(4)
         
+        # Header (Title on left, Live Value on right)
         header = QHBoxLayout()
         t_lbl = QLabel(title.upper())
         t_lbl.setStyleSheet(f"color: {TEXT_DIM}; font-size: 9px; font-weight: bold; border: none;")
+        
         self.v_lbl = QLabel("--")
         self.v_lbl.setStyleSheet(f"color: {color}; font-size: 11px; font-weight: bold; border: none;")
         
@@ -47,6 +63,7 @@ class MetricGraph(QWidget):
         header.addWidget(self.v_lbl)
         layout.addLayout(header)
         
+        # The Graph Canvas
         self.box = QFrame()
         self.box.setFixedHeight(80) 
         self.box.setStyleSheet(f"background-color: {BG_DARK}; border: 1px solid {BORDER}; border-radius: 4px;")
@@ -55,9 +72,13 @@ class MetricGraph(QWidget):
         
         self.plot = pg.PlotWidget()
         self.plot.setBackground(None)
+        
+        # Hide the numbers on the X and Y axis to keep the UI clean
         self.plot.hideAxis('bottom')
         self.plot.hideAxis('left')
         self.plot.showGrid(x=True, y=True, alpha=0.2)
+        
+        # Lock user interactions so they can't accidentally pan/zoom the mini-graph
         self.plot.setMouseEnabled(x=False, y=False)
         self.plot.setYRange(min_v, max_v, padding=0.1)
         
@@ -66,17 +87,23 @@ class MetricGraph(QWidget):
         layout.addWidget(self.box)
 
     def update_data(self, data_list):
+        """Called by the visualizer loop to push the newest angle to the screen."""
         if not data_list: 
             return
+            
         self.curve.setData(data_list)
+        # Update the live text label with the most recent number
         self.v_lbl.setText(f"{int(data_list[-1])}°")
 
 
 class SkeletonLegend(QFrame):
-    """Simple color legend for the 3D visualizer."""
+    """
+    Simple, elegant color legend for the 3D visualizer.
+    Tells the user which side of the body is Blue vs Orange.
+    """
     def __init__(self):
         super().__init__()
-        self.setStyleSheet(f"border: none; background: transparent;")
+        self.setStyleSheet("border: none; background: transparent;")
         l = QHBoxLayout(self)
         l.setContentsMargins(0, 5, 0, 15)
         
@@ -94,50 +121,3 @@ class SkeletonLegend(QFrame):
         add_item("Right", COLOR_BONE_RIGHT)
         add_item("Center", COLOR_BONE_CENTER)
         l.addStretch()
-
-class AnalysisCard(QFrame):
-    """Reusable card for the Analysis Page to display PyqtGraph widgets."""
-    def __init__(self, title, desc, y_label="Degrees", legend_items=None):
-        super().__init__()
-        self.setStyleSheet(f"background-color: {BG_PANEL}; border: 1px solid {BORDER}; border-radius: 6px;")
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(15, 15, 15, 15)
-        
-        # Header & Legend
-        header_lay = QHBoxLayout()
-        lbl_title = QLabel(title)
-        lbl_title.setStyleSheet(f"color: {TEXT_MAIN}; font-size: 14px; font-weight: bold; border: none;")
-        header_lay.addWidget(lbl_title)
-        header_lay.addStretch()
-        
-        if legend_items:
-            leg_lay = QHBoxLayout()
-            leg_lay.setSpacing(8)
-            for name, color in legend_items:
-                indicator = QLabel()
-                indicator.setFixedSize(12, 12)
-                indicator.setStyleSheet(f"background-color: {color}; border-radius: 2px;")
-                lbl = QLabel(name)
-                lbl.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px; border: none;")
-                leg_lay.addWidget(indicator)
-                leg_lay.addWidget(lbl)
-            header_lay.addLayout(leg_lay)
-            
-        lay.addLayout(header_lay)
-        
-        # Description
-        lbl_desc = QLabel(desc)
-        lbl_desc.setWordWrap(True)
-        lbl_desc.setStyleSheet(f"color: {TEXT_DIM}; font-size: 11px; border: none; margin-bottom: 5px;")
-        lay.addWidget(lbl_desc)
-        
-        # Plot Setup
-        self.plot = pg.PlotWidget()
-        self.plot.setBackground(BG_DARK)
-        self.plot.setLabel('bottom', "Time")
-        self.plot.setLabel('left', y_label)
-        self.plot.showGrid(x=True, y=True, alpha=0.2)
-        self.plot.enableAutoRange(axis=pg.ViewBox.XYAxes)
-        self.plot.setMinimumHeight(200)
-        
-        lay.addWidget(self.plot)

@@ -10,7 +10,9 @@ MIN_WINDOW_WIDTH = 800
 MIN_WINDOW_HEIGHT = 550
 PANEL_WIDTH = 280
 
-# UNIVERSAL UI PALETTE
+# ================================================
+# UNIVERSAL UI PALETTE (Fluent Design System)
+# ================================================
 # Backgrounds
 BG_DARK = "#F3F3F3"        # Windows base background (Absorbs glare)
 BG_PANEL = "#FFFFFF"       # Elevated Card background (Pure White)
@@ -65,7 +67,7 @@ PLOT_ELB_L = "#005FB8"
 PLOT_ELB_R = "#D83B01"
 
 # ================================================
-# ADVANCED CSS THEMES (The "Windows 11" Look)
+# ADVANCED CSS THEMES
 # ================================================
 
 # Main Window & Modern Scrollbars
@@ -132,7 +134,6 @@ CSS_INPUT = f"""
     }}
 """
 
-# Add this near your other CSS strings in core/config.py
 CSS_CHECKBOX = """
     QCheckBox {
         color: black;
@@ -199,16 +200,14 @@ LAUNCHER_BTN_CSS = """
         border: 1px solid #e0e0e0;
         border-radius: 10px;
         padding: 20px;
-        text-align: left; /* Keeps text aligned nicely */
+        text-align: left; 
     }
     
-    /* Hover state for NEW RECORDING (matches the Teal in your logo) */
     QPushButton#btn_record:hover {
         border: 1px solid #20949c; 
         background-color: #f7fcfc;
     }
     
-    /* Hover state for OPEN STUDIO (matches the Blue in your text) */
     QPushButton#btn_studio:hover {
         border: 1px solid #005596;
         background-color: #f5f9fc;
@@ -229,6 +228,7 @@ MAX_HISTORY_LENGTH = 50
 # ================================================
 # METRIC GRAPH CONFIGURATIONS
 # ================================================
+# Key, Title, Hex Color, Min Angle, Max Angle
 METRIC_CONFIGS = [
     ('lean_x', "Trunk Lat.", GRAPH_CENTER, -45, 45),
     ('lean_z', "Trunk Depth", GRAPH_Z_AXIS, -45, 45),
@@ -243,12 +243,13 @@ METRIC_CONFIGS = [
 ]
 
 # ================================================
-# PATH RESOLUTION
+# PATH RESOLUTION (PyInstaller Ready)
 # ================================================
 def get_base_path():
+    """Ensures image assets load correctly whether running as a .py script or compiled .exe"""
     if getattr(sys, 'frozen', False):
         return sys._MEIPASS
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")) # Adjusted to reach root from core/ui/
 
 BASE_DIR = get_base_path()
 ASSETS_DIR = os.path.join(BASE_DIR, "assets")
@@ -261,7 +262,7 @@ LOGO = os.path.join(ASSETS_DIR, "logo-main-transp.png")
 # UTILS
 # ================================================
 def close_splash():
-    """Safely closes the PyInstaller splash screen if it exists."""
+    """Safely closes the PyInstaller splash screen once the heavy UI finishes booting."""
     try:
         import pyi_splash # type: ignore
         if pyi_splash.is_alive():

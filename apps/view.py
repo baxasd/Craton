@@ -14,7 +14,9 @@ from PyQt6.QtGui import QFont, QPixmap
 
 # Pulling in custom settings from your new enterprise architecture
 from core.radar.parser import RadarConfig
-from core.ui.theme import * # Setup a logger so errors print cleanly to the terminal
+from core.ui.theme import * 
+
+# Setup a logger so errors print cleanly to the terminal
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("Subscriber")
 

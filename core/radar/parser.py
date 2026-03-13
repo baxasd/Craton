@@ -1,119 +1,109 @@
-import math        # for ceil() and log2() used in FFT bin padding
-import struct       # for unpacking binary data from the radar's USB stream
-import logging      # standard Python logging — errors go here instead of crashing
+import math         # Used for ceil() and log2() to calculate FFT padding
+import struct       # Used for unpacking raw C-style binary data from the USB stream
+import logging      
 
-import numpy as np  # numpy for the uint16 frombuffer call in the parser
+import numpy as np  # Used for high-speed binary-to-matrix conversion
 
-log = logging.getLogger(__name__)  # module-level logger, name = "core"
+log = logging.getLogger("RadarParser")
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  RadarConfig
 #  Reads a TI mmWave .cfg text file and derives every physical radar parameter
-#  the rest of the pipeline needs (range bins, Doppler bins, max velocity, etc.)
+#  (range bins, Doppler bins, max velocity, etc.) required by the DSP engine.
 # ─────────────────────────────────────────────────────────────────────────────
 
 class RadarConfig:
 
     def __init__(self, file_path: str):
-        self.file_path = file_path   # keep the path so sensor.py can re-open it when sending the cfg to hardware
-        self._parse(file_path)       # parse immediately on construction — object is ready to use after __init__
+        self.file_path = file_path   
+        self._parse(file_path)       
 
     def _parse(self, file_path: str):
         with open(file_path) as f:
-            # Read every non-blank line that isn't a comment (% = comment in TI cfg files)
-            # Split each line into tokens so val[0] is the command name and val[1..] are its arguments
+            # Read every non-blank line that isn't a comment (% = comment in TI syntax)
             lines = [l.split() for l in f if l.strip() and not l.startswith("%")]
 
-        chirp  = {}   # will hold the profileCfg values (chirp timing and ADC settings)
-        frame  = {}   # will hold the frameCfg values (loops, periodicity)
-        rx_en  = 0    # RX antenna bitmask — e.g. 15 = 0b1111 = 4 RX antennas enabled
-        tx_en  = 0    # TX antenna bitmask — e.g. 7  = 0b0111 = 3 TX antennas enabled
+        chirp  = {}   # profileCfg values (chirp timing and ADC settings)
+        frame  = {}   # frameCfg values (loops, periodicity)
+        rx_en  = 0    # RX antenna bitmask (e.g., 15 = 0b1111 = 4 RX antennas enabled)
+        tx_en  = 0    # TX antenna bitmask (e.g., 7  = 0b0111 = 3 TX antennas enabled)
 
         for val in lines:
             if not val:
-                continue          # skip any line that came out empty after splitting
+                continue 
 
-            cmd = val[0]          # first token is always the command name
+            cmd = val[0] # The command name (e.g., 'profileCfg')
 
             if cmd == "channelCfg":
-                rx_en = int(val[1])   # second token: which RX antennas are on (bitmask)
-                tx_en = int(val[2])   # third token:  which TX antennas are on (bitmask)
+                rx_en = int(val[1])  
+                tx_en = int(val[2])  
 
             elif cmd == "profileCfg":
-                if int(val[1]) == 0:  # only parse profile ID 0 — we only use one profile
+                if int(val[1]) == 0:  # Only parse profile ID 0
                     chirp = {
-                        "startFreq":     float(val[2]),    # carrier frequency in GHz (60 GHz for this sensor)
-                        "idleTime":      float(val[3]),    # dead time between chirps in microseconds
-                        "rampEndTime":   float(val[5]),    # total chirp sweep duration in microseconds
-                        "freqSlope":     float(val[8]),    # how fast the frequency ramps in MHz/us
-                        "numADCsamples": int(val[10]),     # how many I/Q samples are collected per chirp
-                        "sampleRate":    float(val[11]),   # ADC sampling rate in ksps (kilo-samples/sec)
+                        "startFreq":     float(val[2]),    # Carrier frequency in GHz (usually 60 or 77)
+                        "idleTime":      float(val[3]),    # Dead time between chirps in microseconds
+                        "rampEndTime":   float(val[5]),    # Total chirp sweep duration in microseconds
+                        "freqSlope":     float(val[8]),    # How fast the frequency ramps in MHz/us
+                        "numADCsamples": int(val[10]),     # I/Q samples collected per chirp
+                        "sampleRate":    float(val[11]),   # ADC sampling rate in ksps
                     }
 
             elif cmd == "frameCfg":
                 frame = {
-                    "chirpStartInd": int(val[1]),   # index of first chirp in the sequence (usually 0)
-                    "chirpEndInd":   int(val[2]),   # index of last chirp (e.g. 2 means 3 chirps: 0,1,2)
-                    "numLoops":      int(val[3]),   # how many times that chirp sequence repeats per frame = Doppler bins
-                    "periodicity":   int(val[5]),   # frame interval in milliseconds — controls FPS
+                    "chirpStartInd": int(val[1]),   # Index of first chirp 
+                    "chirpEndInd":   int(val[2]),   # Index of last chirp 
+                    "numLoops":      int(val[3]),   # Number of times the chirp repeats = Doppler velocity bins
+                    "periodicity":   int(val[5]),   # Frame interval in milliseconds (controls FPS)
                 }
 
-        # Guard: if the file didn't contain the required commands, fail loudly now rather than
-        # producing silent wrong results later in the pipeline
+        # Guard: Ensure the file wasn't empty or corrupted
         if not chirp:
             raise ValueError(f"No profileCfg (profile 0) found in {file_path}")
         if not frame:
             raise ValueError(f"No frameCfg found in {file_path}")
 
-        # Count how many 1-bits are in each antenna bitmask to get the antenna counts
-        self.rxAntennas = bin(rx_en).count("1")   # e.g. bin(15) = '0b1111' → 4 RX antennas
-        self.txAntennas = bin(tx_en).count("1")   # e.g. bin(7)  = '0b0111' → 3 TX antennas
+        # Count the 1-bits in the bitmask to figure out how many physical antennas are active
+        self.rxAntennas = bin(rx_en).count("1")  
+        self.txAntennas = bin(tx_en).count("1")  
 
-        self.ADCsamples = chirp["numADCsamples"]  # raw ADC sample count (64 in this config)
+        self.ADCsamples = chirp["numADCsamples"] 
 
-        # The range FFT must be a power of two for efficiency.
-        # math.ceil(log2(N)) gives the exponent of the next power of two >= N.
-        # e.g. ADCsamples=64 → log2(64)=6 → 2^6=64 (already a power of two, no padding needed)
-        # e.g. ADCsamples=100 → ceil(log2(100))=7 → 2^7=128 (padded up to 128)
+        # The FFT algorithm requires arrays to be a perfect power of two (64, 128, 256).
+        # If the ADC samples are 100, this math bumps it up to 128 (padding the rest with zeros).
         self.numRangeBins = 1 if self.ADCsamples == 0 else 2 ** math.ceil(math.log2(self.ADCsamples))
 
-        # Bandwidth = how far the frequency sweeps during the ADC collection window
-        # freqSlope (MHz/us) × ADCsamples / sampleRate (ksps) gives time in us, ×1e9 converts to Hz
+        # Bandwidth Formula: freqSlope * (ADCsamples / sampleRate)
         self.BW = chirp["freqSlope"] * self.ADCsamples / chirp["sampleRate"] * 1e9
 
-        # Range resolution: the minimum distance between two distinguishable targets
-        # Derived from: c / (2 × BW) where c = speed of light
+        # Range Resolution: Speed of Light / (2 * Bandwidth)
         self.rangeRes = 3e8 / (2 * self.BW)
 
-        # Maximum unambiguous range: how far out the range axis goes
-        # Uses numRangeBins (padded FFT size) not raw ADCsamples to match what the DSP actually outputs
+        # Maximum Range
         self.rangeMax = self.rangeRes * self.numRangeBins
 
-        # chirps_per_loop: how many distinct TX chirps fire in one loop iteration (3 for TDM-MIMO with 3 TX)
         chirps_per_loop = frame["chirpEndInd"] - frame["chirpStartInd"] + 1
 
-        self.numLoops = frame["numLoops"]                   # Doppler velocity bins = number of loops per frame (32)
-        numChirps     = chirps_per_loop * self.numLoops     # total chirps per frame = 3 × 32 = 96
+        self.numLoops = frame["numLoops"]                   
+        numChirps     = chirps_per_loop * self.numLoops     
 
-        # Tc: total time for one chirp (idle + ramp), converted from microseconds to seconds
+        # Total time for one chirp (idle + ramp), converted to seconds
         Tc = (chirp["idleTime"] + chirp["rampEndTime"]) * 1e-6
 
-        # fc: carrier frequency in Hz (60 GHz → 60e9 Hz)
+        # Carrier frequency in Hz
         fc = chirp["startFreq"] * 1e9
 
-        # Doppler resolution: how small a velocity difference can be detected
-        # Derived from: c / (2 × fc × Tc × numChirps)
+        # Doppler Resolution Formula: Speed of light / (2 * CarrierFreq * ChirpTime * TotalChirps)
         self.dopRes = 3e8 / (2 * fc * Tc * numChirps)
 
-        # Maximum unambiguous velocity (±dopMax): beyond this, velocities alias (wrap around)
-        # Uses the full numChirps count (not just numLoops) for correct scaling
+        # Maximum unambiguous velocity (Beyond this, the runner's speed will alias/wrap around)
         self.dopMax = numChirps * self.dopRes / 2
 
-        self.T         = frame["periodicity"]   # frame period in milliseconds (66 ms)
-        self.frameRate = 1e3 / self.T           # frames per second = 1000 / 66 ≈ 15.1 FPS
+        self.T         = frame["periodicity"]   # Frame period in milliseconds
+        self.frameRate = 1e3 / self.T           # Frames per second (FPS)
 
     def summary(self) -> dict:
-        # Returns a human-readable dict printed in the terminal on startup
+        """Returns a clean summary dictionary for the UI console."""
         return {
             "TX / RX antennas":   f"{self.txAntennas} / {self.rxAntennas}",
             "Bandwidth":          f"{self.BW / 1e9:.3f} GHz",
@@ -127,73 +117,73 @@ class RadarConfig:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  Frame parser
-#  The radar sends binary packets over USB. Each packet has:
-#    1. A fixed-length header  (40 bytes, format "<Q8I")
-#    2. One or more TLV blocks (Type-Length-Value), each with an 8-byte header
-#       followed by `length` bytes of payload
-#  We only care about TLV type 5 = Range-Doppler Heat Map (RDHM).
+#  Frame Parser (Binary Unpacker)
 # ─────────────────────────────────────────────────────────────────────────────
 
-# TLV type 5 is the Range-Doppler Heat Map — the 2D matrix we visualise
+# TI designates TLV Type 5 as the Range-Doppler Heat Map
 TLV_RANGE_DOPPLER_HEAT_MAP = 5
 
 # Packet header format string for struct.unpack:
-#   < = little-endian (TI uses little-endian throughout)
-#   Q = uint64 (8 bytes) — the magic sync word
-#   8I = eight uint32s (32 bytes) — version, totalPacketLen, platform, frameNum,
-#        timeCpuCycles, numDetectedObj, numTLVs, subFrameNum
+#   <  = little-endian (Intel/TI architecture)
+#   Q  = uint64 (Magic sync word)
+#   8I = eight uint32s (Packet length, frame number, TLV count, etc.)
 _HEADER_FMT = "<Q8I"
-_HEADER_LEN = struct.calcsize(_HEADER_FMT)   # = 40 bytes total
+_HEADER_LEN = struct.calcsize(_HEADER_FMT)   # Always exactly 40 bytes
 
-_TLV_HDR_LEN = 8   # every TLV starts with two uint32s: type (4 bytes) + length (4 bytes)
+_TLV_HDR_LEN = 8   # Every TLV block starts with [Type: 4 bytes] and [Length: 4 bytes]
 
 
 def parse_standard_frame(data: bytes) -> dict:
-    # Start with a clean result — RDHM stays None if we never find TLV type 5
+    """
+    Sifts through a raw binary stream to find and extract the Range-Doppler matrix.
+    """
     out = {"error": 0, "RDHM": None}
 
-    # Reject packets that are too short to even contain a header
+    # Reject packets that are physically too small to even be a header
     if len(data) < _HEADER_LEN:
         out["error"] = 1
         return out
 
     try:
-        # Unpack the 40-byte header into 9 fields
+        # Unpack the 40-byte header
         header   = struct.unpack(_HEADER_FMT, data[:_HEADER_LEN])
-        num_tlvs = header[7]   # field index 7 = numTLVs — how many TLV blocks follow the header
+        num_tlvs = header[7]   # Field 7 tells us how many TLV blocks are attached
     except struct.error:
-        # struct.unpack raises if the byte count doesn't match — treat as corrupt
+        # Corrupted header
         out["error"] = 1
         return out
 
-    # Advance past the header so `data` now points at the first TLV
+    # Slice the header off the data, leaving only the TLV blocks
     data = data[_HEADER_LEN:]
 
     for _ in range(num_tlvs):
-        # Each TLV starts with an 8-byte mini-header: [type: uint32][length: uint32]
+        # Prevent crashes if the network dropped the end of the packet
         if len(data) < _TLV_HDR_LEN:
-            break   # truncated packet — stop safely
+            break 
 
+        # Unpack the 8-byte TLV header to find out what type of data this block holds
         tlv_type, tlv_len = struct.unpack("<2I", data[:_TLV_HDR_LEN])
-        data = data[_TLV_HDR_LEN:]   # advance past the TLV header to the payload
+        
+        # Advance the pointer past the TLV header to the actual payload
+        data = data[_TLV_HDR_LEN:] 
 
         if len(data) < tlv_len:
-            break   # payload is shorter than declared — corrupt, stop safely
+            break 
 
+        # If it's Type 5, we found the Heatmap!
         if tlv_type == TLV_RANGE_DOPPLER_HEAT_MAP:
             try:
-                # Interpret the raw payload bytes as a flat array of uint16 values.
-                # data[:tlv_len] ensures we only consume exactly the declared bytes.
-                # .copy() detaches the array from the original buffer so it's safe to hold
+                # Convert the raw bytes into unsigned 16-bit integers.
+                # .copy() is critical here! It detaches the matrix from the massive raw memory buffer,
+                # allowing Python's Garbage Collector to safely delete the raw buffer to prevent RAM leaks.
                 out["RDHM"] = np.frombuffer(data[:tlv_len], dtype=np.uint16).copy()
             except Exception as e:
                 log.error("RDHM parse failed: %s", e)
 
-            # We only need TLV 5 — no point scanning the rest of the packet
+            # We found what we need, stop searching this packet to save CPU time
             break
 
-        # Not the TLV we want — skip over its payload and check the next one
+        # If it wasn't Type 5, slice off the payload and loop back around to check the next TLV block
         data = data[tlv_len:]
 
     return out
