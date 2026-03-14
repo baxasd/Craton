@@ -3,12 +3,13 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from core.math.filters import PipelineProcessor
+from core.ui.theme import COLOR_RAW_DATA, COLOR_CLEAN_DATA, PREP_RAW_WIDTH, PREP_CLEAN_WIDTH
 
 def render():
     col_back, col_title = st.columns([1, 10])
     with col_back:
         if st.button("⬅️ Back to Menu", width='stretch'):
-            st.session_state.current_page = "launcher"
+            st.session_state.current_page = "hub"
             st.rerun()
     with col_title:
         st.title("🧹 Data Preparation")
@@ -62,9 +63,12 @@ def render():
 
     if st.session_state.raw_df is not None and selected_joint:
         fig = go.Figure()
-        fig.add_trace(go.Scatter(y=st.session_state.raw_df[selected_joint], mode='lines', name='Raw Data', line=dict(color='#D83B01', width=1.5, dash='dot')))
+        
+        # UI THEME CONSTANTS APPLIED HERE
+        fig.add_trace(go.Scatter(y=st.session_state.raw_df[selected_joint], mode='lines', name='Raw Data', line=dict(color=COLOR_RAW_DATA, width=PREP_RAW_WIDTH, dash='dot')))
         if st.session_state.clean_df is not None:
-            fig.add_trace(go.Scatter(y=st.session_state.clean_df[selected_joint], mode='lines', name='Cleaned Data', line=dict(color='#107C10', width=2.5)))
+            fig.add_trace(go.Scatter(y=st.session_state.clean_df[selected_joint], mode='lines', name='Cleaned Data', line=dict(color=COLOR_CLEAN_DATA, width=PREP_CLEAN_WIDTH)))
+            
         fig.update_layout(title=f"Tracking: {selected_joint}", xaxis_title="Frames", yaxis_title="Coordinate Value (Meters)", hovermode="x unified", height=600, margin=dict(l=0, r=0, t=40, b=0))
         st.plotly_chart(fig, use_container_width=True)
     else:

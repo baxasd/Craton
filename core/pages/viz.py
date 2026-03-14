@@ -5,6 +5,7 @@ import io
 
 from core.io import structs
 from core.math import kinematics
+from core.ui.theme import COLOR_LEFT, COLOR_RIGHT, COLOR_CENTER, COLOR_JOINT, COLOR_SKELETON_BG, COLOR_REF_LINE, VIZ_BONE_WIDTH, VIZ_SPINE_WIDTH
 
 # ── 1. Skeleton Configuration (From render.py) ──
 VISIBLE_NAMES = [
@@ -56,14 +57,18 @@ def draw_2d_skeleton(frame):
         p2 = kinematics.get_point(frame, n2)
         
         if p1 and p2:
-            c = "#8764B8" # Center (Purple)
-            if "left" in n1 or "left" in n2: c = "#005FB8" # Left (Blue)
-            elif "right" in n1 or "right" in n2: c = "#D83B01" # Right (Orange)
+            # UI THEME CONSTANTS APPLIED HERE
+            c = COLOR_CENTER 
+            if "left" in n1 or "left" in n2: c = COLOR_LEFT 
+            elif "right" in n1 or "right" in n2: c = COLOR_RIGHT 
+            
+            # Switch to thicker spine width if dealing with the trunk
+            w = VIZ_SPINE_WIDTH if "mid" in n1 and "mid" in n2 else VIZ_BONE_WIDTH
 
             fig.add_trace(go.Scatter(
                 x=[p1[0], p2[0]], 
                 y=[-p1[1], -p2[1]], # Y-Axis Inversion
-                mode='lines', line=dict(color=c, width=4), hoverinfo='skip', showlegend=False
+                mode='lines', line=dict(color=c, width=w), hoverinfo='skip', showlegend=False
             ))
 
     # ── DRAW JOINTS ──
@@ -76,7 +81,7 @@ def draw_2d_skeleton(frame):
             names.append(name.replace("_", " ").title())
 
     fig.add_trace(go.Scatter(
-        x=xs, y=ys, mode='markers', marker=dict(size=6, color="#323130"),
+        x=xs, y=ys, mode='markers', marker=dict(size=6, color=COLOR_JOINT),
         text=names, hoverinfo='text', showlegend=False
     ))
 
@@ -86,13 +91,13 @@ def draw_2d_skeleton(frame):
     
     if hip:
         center_x, center_y = hip[0], -hip[1]
-        fig.add_vline(x=center_x, line_width=2, line_dash="dash", line_color="rgba(0,0,0,0.15)")
+        fig.add_vline(x=center_x, line_width=2, line_dash="dash", line_color=COLOR_REF_LINE)
 
     fig.update_layout(
         xaxis=dict(title='X (Horizontal)', range=[center_x - 1.0, center_x + 1.0], scaleanchor="y", scaleratio=1),
         yaxis=dict(title='Y (Vertical)', range=[center_y - 1.2, center_y + 1.2]),
         height=600, margin=dict(l=0, r=0, b=0, t=0),
-        plot_bgcolor='rgba(0,0,0,0.02)'
+        plot_bgcolor=COLOR_SKELETON_BG
     )
     return fig
 
@@ -100,7 +105,7 @@ def render():
     col_back, col_title = st.columns([1, 10])
     with col_back:
         if st.button("⬅️ Back to Menu", width='stretch'):
-            st.session_state.current_page = "launcher"
+            st.session_state.current_page = "hub"
             st.rerun()
     with col_title:
         st.title("🦴 Precision Frame Inspector")
@@ -139,7 +144,6 @@ def render():
             
             vals = kinematics.compute_all_metrics(current_frame)
             
-            # OPTIMIZATION: Replaced repetitive containers with a metric layout loop
             metrics_config = [
                 ("**Trunk Lean**", [("Sagittal (Forward)", 'lean_x'), ("Frontal (Side)", 'lean_z')]),
                 ("**Knee Flexion**", [("Left Knee", 'l_knee'), ("Right Knee", 'r_knee')]),

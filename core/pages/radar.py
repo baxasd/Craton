@@ -7,6 +7,7 @@ import configparser
 
 from core.radar.parser import RadarConfig
 from core.radar.dsp import RecordingSession, extract_gait_metrics
+from core.ui.theme import COLOR_RADAR_BG, COLOR_CENTROID_MAIN, COLOR_CENTROID_SHADOW, COLOR_ZERO_LINE
 
 # ─── CACHED FFT DSP ENGINE ───────────────────────────────────────────────────
 @st.cache_data(show_spinner=False)
@@ -46,7 +47,7 @@ def render():
     col_back, col_title = st.columns([1, 10])
     with col_back:
         if st.button("⬅️ Back to Menu", width='stretch'):
-            st.session_state.current_page = "launcher"
+            st.session_state.current_page = "hub"
             st.rerun()
     with col_title:
         st.title("📡 Radar Spectrogram Analysis")
@@ -97,7 +98,6 @@ def render():
         
         fig = go.Figure()
         
-        # FIX: Added .T to spec so Plotly draws Time on X and Velocity on Y
         fig.add_trace(go.Heatmap(
             z=spec.T, x=t_axis, y=v_axis,
             colorscale=plotly_cmap,
@@ -106,18 +106,19 @@ def render():
             showscale=False   
         ))
 
+        # UI THEME CONSTANTS APPLIED HERE
         if show_centroid and centroid is not None:
-            fig.add_trace(go.Scatter(x=t_axis, y=centroid, mode='lines', line=dict(color='black', width=4), hoverinfo='skip', showlegend=False))
-            fig.add_trace(go.Scatter(x=t_axis, y=centroid, mode='lines', name='Mass Centroid', line=dict(color='#00E5FF', width=1.5)))
+            fig.add_trace(go.Scatter(x=t_axis, y=centroid, mode='lines', line=dict(color=COLOR_CENTROID_SHADOW, width=4), hoverinfo='skip', showlegend=False))
+            fig.add_trace(go.Scatter(x=t_axis, y=centroid, mode='lines', name='Mass Centroid', line=dict(color=COLOR_CENTROID_MAIN, width=1.5)))
 
-        fig.add_hline(y=0, line_dash="dash", line_color="rgba(255, 255, 255, 0.4)", line_width=1)
+        fig.add_hline(y=0, line_dash="dash", line_color=COLOR_ZERO_LINE, line_width=1)
 
         fig.update_layout(
             xaxis_title="Time (Seconds)",
             yaxis_title="Doppler Velocity (m/s)",
             height=600,
             margin=dict(l=0, r=0, t=10, b=0),
-            plot_bgcolor='rgba(0,0,0,1)',
+            plot_bgcolor=COLOR_RADAR_BG,
             paper_bgcolor='rgba(0,0,0,0)'
         )
 

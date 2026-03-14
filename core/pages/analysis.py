@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 
 from core.io import structs
 from core.math import kinematics
+from core.ui.theme import COLOR_LEFT, COLOR_RIGHT
 
 @st.cache_data
 def process_analysis_data(df_raw):
@@ -68,7 +69,7 @@ def render():
     col_back, col_title = st.columns([1, 10])
     with col_back:
         if st.button("⬅️ Back to Menu", width='stretch'):
-            st.session_state.current_page = "launcher"
+            st.session_state.current_page = "hub"
             st.rerun()
     with col_title:
         st.title("📊 Gait Analysis")
@@ -124,11 +125,11 @@ def render():
             plot_df = df_per_min
             x_col = "time_min"
 
+        # UI THEME CONSTANTS APPLIED HERE
         with st.container(border=True):
-            fig_lean = create_kinematic_plot(plot_df, x_col, ['lean_x', 'lean_z'], ["Sagittal (X)", "Frontal (Z)"], ["#D83B01", "#005FB8"], "1. Trunk Lean Dynamics", show_env)
+            fig_lean = create_kinematic_plot(plot_df, x_col, ['lean_x', 'lean_z'], ["Sagittal (X)", "Frontal (Z)"], [COLOR_RIGHT, COLOR_LEFT], "1. Trunk Lean Dynamics", show_env)
             st.plotly_chart(fig_lean, use_container_width=True)
 
-        # OPTIMIZATION: Removed repetitive column generation and replaced with a clean rendering loop
         plots_config = [
             ("2. Knee Flexion", ['l_knee', 'r_knee'], ["Left Knee", "Right Knee"]),
             ("3. Hip Flexion", ['l_hip', 'r_hip'], ["Left Hip", "Right Hip"]),
@@ -138,9 +139,9 @@ def render():
         
         cols = st.columns(2)
         for i, (title, y_cols, names) in enumerate(plots_config):
-            with cols[i % 2]: # Alternates perfectly between Left Col and Right Col
+            with cols[i % 2]:
                 with st.container(border=True):
-                    fig = create_kinematic_plot(plot_df, x_col, y_cols, names, ["#005FB8", "#D83B01"], title, show_env)
+                    fig = create_kinematic_plot(plot_df, x_col, y_cols, names, [COLOR_LEFT, COLOR_RIGHT], title, show_env)
                     st.plotly_chart(fig, use_container_width=True)
     else:
         st.info("👈 Upload your CLEANED dataset from the Data Prep tab to run the analysis.")

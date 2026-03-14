@@ -1,6 +1,22 @@
 [theme]
-base="light"
-primaryColor="#005FB8"
+# The primary accent color for interactive elements (e.g., Primary Buttons, Sliders)
+primaryColor = "#D32F2F"
 
+# The base theme. Options: "light" or "dark"
+base = "light"
+
+# The main background color of the app
+backgroundColor = "#FFFFFF"
+
+# The background color for the sidebar and st.container(border=True)
+secondaryBackgroundColor = "#F3F2F1"
+
+# The global text color
+textColor = "#323130"
+
+# The global font family. Options: "sans serif", "serif", "monospace"
+font = "sans serif"
+
+# (Optional) Keep the server setting we added earlier to auto-refresh on save
 [server]
 runOnSave = true
