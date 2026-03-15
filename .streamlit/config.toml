@@ -1,6 +1,6 @@
 [theme]
 # The primary accent color for interactive elements (e.g., Primary Buttons, Sliders)
-primaryColor = "#006CD1"
+primaryColor = "#008080"
 
 # The base theme. Options: "light" or "dark"
 base = "light"
