@@ -1,35 +1,54 @@
 import streamlit as st
 
 def render():
+    # Hide the sidebar for a focused, distraction-free hub
     st.markdown("""<style>[data-testid="stSidebar"] {display: none;}</style>""", unsafe_allow_html=True)
-    st.title("OST Studio")
-    st.markdown("Select a module to begin.")
-    
-    # 2x2 Grid Layout
-    r1c1, r1c2 = st.columns(2, gap="large")
-    with r1c1:
-        st.info("### 🧹 Data Preparation\nTrim, clean, and apply DSP filters to raw Parquet recordings.")
-        if st.button("Launch Data Prep", type="primary", width='stretch'):
-            st.session_state.current_page = "prep"
-            st.rerun()
-            
-    with r1c2:
-        st.info("### 📊 Gait Analysis\nRun the kinematic engine, calculate postural drift, and export reports.")
-        if st.button("Launch Analysis", type="primary", width='stretch'):
-            st.session_state.current_page = "analysis"
-            st.rerun()
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    r2c1, r2c2 = st.columns(2, gap="large")
-    
-    with r2c1:
-        st.info("### 🦴 Frame Inspector\nScrub through the timeline to view 2D kinematics frame-by-frame.")
-        if st.button("Launch Visualizer", type="primary", width='stretch'):
-            st.session_state.current_page = "viz"
-            st.rerun()
+    # ── THE 1-3-1 BENTO LAYOUT ──
+    _, center_col, _ = st.columns([1, 3, 1])
 
-    with r2c2:
-        st.info("### 📡 Radar Analysis\nGenerate Micro-Doppler spectrograms and extract cadence.")
-        if st.button("Launch Radar", type="primary", width='stretch'):
-            st.session_state.current_page = "radar"
-            st.rerun()
+    with center_col:
+        # Native headers
+        
+        st.image("assets/logo-main-transp.png", width=150)
+        # st.title("OST Studio")
+        st.markdown("##### Osteo-Skeletal Tracker Suite")
+        st.caption("Select an analytical module to begin your workflow.")
+
+        # ── ROW 1 ──
+        r1_c1, r1_c2 = st.columns(2)
+        
+        with r1_c1:
+            with st.container(border=True):
+                st.markdown("### Data Prep")
+                st.caption("Clean, trim, and filter raw kinematics.")
+                if st.button("Launch Module", key="btn_prep", type="primary", width="stretch"):
+                    st.session_state.current_page = "prep"
+                    st.rerun()
+                    
+        with r1_c2:
+            with st.container(border=True):
+                st.markdown("### Gait Analysis")
+                st.caption("Calculate posture metrics and export results.")
+                if st.button("Launch Module", key="btn_gait", type="primary", width="stretch"):
+                    st.session_state.current_page = "analysis"
+                    st.rerun()
+
+        # ── ROW 2 ──
+        r2_c1, r2_c2 = st.columns(2)
+        
+        with r2_c1:
+            with st.container(border=True):
+                st.markdown("### Visualizer")
+                st.caption("Scrub perfectly synced 2D kinematics.")
+                if st.button("Launch Module", key="btn_viz", type="primary", width="stretch"):
+                    st.session_state.current_page = "viz"
+                    st.rerun()
+
+        with r2_c2:
+            with st.container(border=True):
+                st.markdown("### Radar Analysis")
+                st.caption("Generate Micro-Doppler spectrograms.")
+                if st.button("Launch Module", key="btn_radar", type="primary", width="stretch"):
+                    st.session_state.current_page = "radar"
+                    st.rerun()

@@ -1,6 +1,6 @@
 [theme]
 # The primary accent color for interactive elements (e.g., Primary Buttons, Sliders)
-primaryColor = "#D32F2F"
+primaryColor = "#006CD1"
 
 # The base theme. Options: "light" or "dark"
 base = "light"
@@ -17,6 +17,21 @@ textColor = "#323130"
 # The global font family. Options: "sans serif", "serif", "monospace"
 font = "sans serif"
 
-# (Optional) Keep the server setting we added earlier to auto-refresh on save
+#[client]
+# Removes the "Run" / "Stop" icons in the top right
+#toolbarMode = "minimal"
+
+[browser]
+# Removes the "Share" and "Deploy" buttons
+gatherUsageStats = false
+
+#[ui]
+# This hides the 'X' button and the menu completely when combined with CSS
+#hideTopBar = true
+
 [server]
+# Optimizes for production performance
+#headless = true 
+#enableCORS = false
+#enableXsrfProtection = false
 runOnSave = true
