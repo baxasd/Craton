@@ -9,7 +9,6 @@ OST Suite is a high-performance, distributed workstation for recording, processi
 ![Version](https://img.shields.io/badge/version-0.3.0--beta.1-orange)
 ![Python](https://img.shields.io/badge/python-3.11-green)
 ![ZeroMQ](https://img.shields.io/badge/ZeroMQ-Curve25519-red)
-![Status](https://img.shields.io/badge/status-beta-yellow)
 
 > **⚠️ Beta Release:** Version 0.3.0-beta.1 introduces standalone `.exe` packaging. Please report any bugs or errors in the Issues tab.
 
