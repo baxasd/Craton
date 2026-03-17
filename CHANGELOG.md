@@ -25,7 +25,7 @@
 - Switched to Light Theme
 - Added Analysis Page in Studio
 
-## 0.3.0
+## 0.3.0-beta.1
 
 - Migrated Studio to Streamlit
 - Added Radar Recorder and Spectrogram analyzer

@@ -1,51 +1,58 @@
 # OST Suite 
 
-<p align="left"><img src="assets/logo-main-transp.png" alt="OST Suite Logo" width="250"></p>
+<p align="left"><img src="assets/logo.png" alt="OST Suite Logo" width="250"></p>
 
 #### Osteo-Skeletal Tracker & Telemetry
 
 OST Suite is a high-performance, distributed workstation for recording, processing, and visualizing multi-modal skeletal kinematics and micro-Doppler radar data. 
 
-![Version](https://img.shields.io/badge/version-0.3.0-blue)
+![Version](https://img.shields.io/badge/version-0.3.0--beta.1-orange)
 ![Python](https://img.shields.io/badge/python-3.11-green)
 ![ZeroMQ](https://img.shields.io/badge/ZeroMQ-Curve25519-red)
-![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10.21-teal)
+![Status](https://img.shields.io/badge/status-beta-yellow)
+
+> **⚠️ Beta Release:** Version 0.3.0-beta.1 introduces standalone `.exe` packaging. Please report any bugs or errors in the Issues tab.
 
 ---
 
 ## The Three Core Modules
 
-### OST Publisher (`stream.py`)
-The hardware-interfacing node. 
+### 🛰️ OST Streamer
+The hardware-interfacing node. Captures and encrypts live radar and camera telemetry.
 
-### OST Viewer (`view.py`)
-The live monitoring dashboard. 
+### 🖥️ OST Viewer
+The live monitoring dashboard. High-speed visualization of encrypted network streams.
 
-### OST Studio (`studio.py`)
-The offline analysis laboratory. Streamlit web app for post-processing recorded sessions.
+### 🧪 OST Studio
+The offline analysis laboratory. A specialized workbench for post-processing recorded `.parquet` sessions.
 
 ---
 
-## Quick Start Setup
+## Quick Start (Standalone Beta)
 
-**1. Clone the Repository & Create Virtual Environment**
-
-**2. Install Dependencies** - install using requirements.txt
-
-**3. Configure Settings** - Everything is managed in a central settings file. Copy the template to get started:
-
-**4. Generate Security Keys**
-Because OST encrypts all network traffic, you must generate a pair of cryptographic keys before streaming
-*Copy the terminal output and paste it at the bottom of new `settings.ini` file.*
+1. **Download:** Get the latest release `.zip` and extract it.
+2. **Configure:** Rename `settings-template.ini` to `settings.ini` inside libs directory.
+3. **Security Keys:** Run the Keygen tool through `Studio.exe` to generate Curve25519 keys. Paste the output into your `settings.ini`.
+4. **Launch:** Launch modules
 
 ---
 
 ## Running the Suite
 
-Ensure your hardware is plugged in and your `settings.ini` has the correct COM ports and IPs defined.
+Ensure your hardware is plugged in and `settings.ini` has the correct COM ports and IPs defined.
 
-**Start the Hardware Capture:** - If running both radar and camera, it should be done in separate computers or terminals
+* **Start Hardware Capture:** Launch **Streamer**. *(Note: Radar and Camera streams should be run in separate terminals or computers).*
+* **Watch Live Feed:** Launch **Viewer** to monitor the encrypted network stream.
+* **Analyze Recorded Data:** Launch **Studio** to analyze saved data files offline.
 
-**Watch the Live Feed:** - Make sure you have generated keypair for encyrption
+---
 
-**Analyze Recorded Data:** - Streamlit program offers to analyze parquet files offline
+## Developer Setup
+
+If you prefer to run from source code:
+
+1. Clone the repository and create a Python 3.11 virtual environment.
+2. `pip install -r requirements.txt`
+3. Generate keys: `python core/studio/keys.py`
+4. Setup `settings.ini` as described at the beginning of this file
+4. Run modules directly

@@ -40,7 +40,7 @@ COLOR_TEXT     = "#333333"  # Crisp dark gray text
 # ─── 1. BULLETPROOF PATH RESOLUTION ───
 if getattr(sys, 'frozen', False):
     # PyInstaller put everything inside the 'libs' folder!
-    ROOT_DIR = os.path.join(sys._MEIPASS, 'libs')
+    ROOT_DIR = os.path.join(sys._MEIPASS)
 else:
     # If running from source (core/ui/themes.py), go up two levels to reach root
     _current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -57,5 +57,5 @@ config = configparser.ConfigParser(interpolation=None)
 config.read(SETTINGS_PATH)
 
 # Export our global variables
-APP_VERSION = "v0.3.0"
+APP_VERSION = "v0.3.0-beta.1"
 STUDIO_PASS = config.get('Security', 'studio_password', fallback='admin')
