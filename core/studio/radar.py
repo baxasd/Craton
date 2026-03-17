@@ -7,7 +7,7 @@ import configparser
 
 from core.radar.parser import RadarConfig
 from core.radar.dsp import RecordingSession, extract_gait_metrics
-from core.ui.theme import COLOR_RADAR_BG, COLOR_CENTROID_MAIN, COLOR_CENTROID_SHADOW, COLOR_ZERO_LINE
+from core.ui.theme import COLOR_RADAR_BG, COLOR_CENTROID_MAIN, COLOR_CENTROID_SHADOW, COLOR_ZERO_LINE, SETTINGS_PATH
 
 # ─── CACHED FFT DSP ENGINE ───────────────────────────────────────────────────
 @st.cache_data(show_spinner=False)
@@ -21,9 +21,9 @@ def process_radar_data(file_bytes, range_lo, range_hi, smooth_window):
         tmp_path = tmp.name
 
     try:
-        cfg_ini = configparser.ConfigParser()
-        cfg_ini.read('settings.ini')
-        hw_cfg_file = cfg_ini.get('Hardware', 'radar_cfg_file')
+        config = configparser.ConfigParser(interpolation=None)
+        config.read(SETTINGS_PATH)
+        hw_cfg_file = config.get('Hardware', 'radar_cfg_file')
         
         try:
             radar_cfg = RadarConfig(hw_cfg_file)

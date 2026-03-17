@@ -10,7 +10,7 @@ def open_browser():
     webbrowser.open("http://localhost:8501")
 
 if __name__ == "__main__":
-    # 1. Handle PyInstaller's temporary directory pathing
+    
     if getattr(sys, 'frozen', False):
         application_path = sys._MEIPASS
         os.chdir(application_path)

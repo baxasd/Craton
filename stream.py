@@ -9,20 +9,11 @@ import configparser
 import cv2
 from core.radar.parser import parse_standard_frame
 from core.io.storage import CameraSessionWriter, RadarSessionWriter
-from core.ui.theme import APP_VERSION
+from core.ui.theme import APP_VERSION, SETTINGS_PATH
 
 # Setup timestamped console logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("Publisher")
-
-# ─── SECURE PATH RESOLUTION ───
-# If running as an .exe, look next to the executable. If running via Python, use current folder.
-if getattr(sys, 'frozen', False):
-    ROOT_DIR = os.path.dirname(sys.executable)
-else:
-    ROOT_DIR = os.getcwd()
-
-SETTINGS_PATH = os.path.join(ROOT_DIR, 'settings.ini')
 
 # Load global configuration
 config = configparser.ConfigParser(interpolation=None)
