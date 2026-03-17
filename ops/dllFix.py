@@ -1,8 +1,6 @@
-# hook_fix.py
+# Fix for DLL conflict
 import sys
 
-# Force MediaPipe to load internal libraries immediately
-# This locks the correct C++ runtime/protobuf versions before PyQt6 loads
 try:
     import mediapipe
     from mediapipe.python import _framework_bindings

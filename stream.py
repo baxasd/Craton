@@ -15,6 +15,9 @@ from core.ui.theme import APP_VERSION, SETTINGS_PATH
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("Publisher")
 
+if getattr(sys, 'frozen', False):
+    os.chdir(sys._MEIPASS)
+    
 # Load global configuration
 config = configparser.ConfigParser(interpolation=None)
 config.read(SETTINGS_PATH)

@@ -39,8 +39,8 @@ COLOR_TEXT     = "#333333"  # Crisp dark gray text
 
 # ─── 1. BULLETPROOF PATH RESOLUTION ───
 if getattr(sys, 'frozen', False):
-    # If running as an .exe, the root is where the .exe lives
-    ROOT_DIR = sys._MEIPASS
+    # PyInstaller put everything inside the 'libs' folder!
+    ROOT_DIR = os.path.join(sys._MEIPASS, 'libs')
 else:
     # If running from source (core/ui/themes.py), go up two levels to reach root
     _current_dir = os.path.dirname(os.path.abspath(__file__))
