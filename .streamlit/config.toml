@@ -1,37 +1,19 @@
 [theme]
-# The primary accent color for interactive elements (e.g., Primary Buttons, Sliders)
 primaryColor = "#0A8491"
-
-# The base theme. Options: "light" or "dark"
 base = "light"
-
-# The main background color of the app
 backgroundColor = "#F4F6F9"
-
-# The background color for the sidebar and st.container(border=True)
 secondaryBackgroundColor = "#E8EEF2"
-
-# The global text color
 textColor = "#1E293B"
-
-# The global font family. Options: "sans serif", "serif", "monospace"
 font = "sans serif"
 
-#[client]
-# Removes the "Run" / "Stop" icons in the top right
-#toolbarMode = "minimal"
+[client]
+toolbarMode = "viewer"
 
 [browser]
-# Removes the "Share" and "Deploy" buttons
 gatherUsageStats = false
 
-#[ui]
-# This hides the 'X' button and the menu completely when combined with CSS
-#hideTopBar = true
-
 [server]
-# Optimizes for production performance
-#headless = true 
-#enableCORS = false
-#enableXsrfProtection = false
-runOnSave = true
+headless = true 
+runOnSave = false
+address = "localhost"
+showEmailPrompt = false

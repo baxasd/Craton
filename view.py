@@ -1,5 +1,6 @@
 import sys
 import logging
+import os
 import zmq
 import json
 import numpy as np
@@ -12,15 +13,24 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QLa
 from PyQt6.QtGui import QPixmap
 
 from core.radar.parser import RadarConfig
-from core.ui.theme import COLOR_MAIN_BG, COLOR_TEXT 
+from core.ui.theme import COLOR_MAIN_BG, COLOR_TEXT, APP_VERSION
 
 # Setup terminal logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("Viewer")
 
+# ─── SECURE PATH RESOLUTION ───
+# If running as an .exe, look next to the executable. If running via Python, use current folder.
+if getattr(sys, 'frozen', False):
+    ROOT_DIR = os.path.dirname(sys.executable)
+else:
+    ROOT_DIR = os.getcwd()
+
+SETTINGS_PATH = os.path.join(ROOT_DIR, 'settings.ini')
+
 # Load global configuration
 config = configparser.ConfigParser(interpolation=None)
-config.read('settings.ini')
+config.read(SETTINGS_PATH)
 
 HW_CFG_FILE     = config['Hardware']['radar_cfg_file']
 ZMQ_RADAR_PORT  = config['Network'].get('zmq_radar_port', '5555')
@@ -243,12 +253,15 @@ class LiveViewerWindow(QMainWindow):
 
     def closeEvent(self, event):
         """Terminate networking safely before UI closes."""
-        log.info("SHUTTING DOWN...")
+        log.info("Shutting Down...")
         self.w_radar.stop()
         self.w_cam.stop()
         event.accept()
 
 def main():
+    print("\n*******************************")
+    print(f"****** OST VIEWER {APP_VERSION} ******")
+    print("*******************************")
     ip_input = input(f"\nEnter Stream IP. Leave blank for localhost: ").strip()
     ip = VIEW_IP if not ip_input else ip_input
             

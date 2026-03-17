@@ -24,3 +24,13 @@
 - Major UI fixes
 - Switched to Light Theme
 - Added Analysis Page in Studio
+
+## 0.3.0
+
+- Migrated Studio to Streamlit
+- Added Radar Recorder and Spectrogram analyzer
+- Changed Recorders into headless CLI applications
+- Packaged all apps into a single executable build
+- Added unified CLI launcher
+- Centralized UI themes and configurations
+- Secured network settings to local access only

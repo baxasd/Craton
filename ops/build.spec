@@ -2,22 +2,19 @@ import sys
 import os
 from PyInstaller.utils.hooks import collect_all, copy_metadata
 
-# Paths
-
 project_root = os.path.abspath(os.path.join(SPECPATH, '..')) #type: ignore
 sys.path.insert(0, project_root)
+
+from core.ui.theme import ICON, COMMAND_ICON 
 
 MANIFEST = os.path.join(project_root, 'ops', 'manifest.xml')
 block_cipher = None
 
-# COLLECT EXTERNAL LIBRARIES
-
 mp_datas, mp_binaries, mp_hidden = collect_all('mediapipe')
 rs_datas, rs_binaries, rs_hidden = collect_all('pyrealsense2')
 cv_datas, cv_binaries, cv_hidden = collect_all('cv2')
-st_datas = copy_metadata('streamlit') + copy_metadata('plotly')
-
-# SHARED DATA & Imports
+st_all_datas, st_all_binaries, st_all_hidden = collect_all('streamlit')
+st_datas = st_all_datas + copy_metadata('plotly')
 
 shared_datas = [
     (os.path.join(project_root, 'assets'), 'assets'),
@@ -25,17 +22,18 @@ shared_datas = [
     (os.path.join(project_root, 'settings-template.ini'), '.')
 ]
 
-# Base hidden imports for hardware & network
 base_hidden = mp_hidden + rs_hidden + cv_hidden + ['pyarrow.vendored.version', 'zmq']
 
-#   BUILD 1: STREAM (PUBLISHER NODE)
 
+# =============================================================================
+#   BUILD 1: STREAM
+# =============================================================================
 a_stream = Analysis( #type: ignore
     [os.path.join(project_root, 'stream.py')],
     pathex=[project_root],
     datas=shared_datas + mp_datas + rs_datas + cv_datas,
     hiddenimports=base_hidden + ['sensors'],
-    runtime_hooks=[]
+    runtime_hooks=[], 
     excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
@@ -55,12 +53,14 @@ exe_stream = EXE( #type: ignore
     strip=False,
     upx=True,
     console=True,
+    icon=COMMAND_ICON,
     manifest=MANIFEST if os.path.exists(MANIFEST) else None,
     contents_directory='libs'
 )
 
-#   BUILD 2: VIEW (SUBSCRIBER NODE)
-
+# =============================================================================
+#   BUILD 2: VIEW
+# =============================================================================
 a_view = Analysis( #type: ignore
     [os.path.join(project_root, 'view.py')],
     pathex=[project_root],
@@ -86,16 +86,16 @@ exe_view = EXE( #type: ignore
     strip=False,
     upx=True,
     console=True,
+    icon=COMMAND_ICON,
     manifest=MANIFEST if os.path.exists(MANIFEST) else None,
     contents_directory='libs'
 )
 
-
-#   BUILD 3: STUDIO (LAUNCHER + LAB + KEY)
+# =============================================================================
+#   BUILD 3: STUDIO
+# =============================================================================
 stu_datas = shared_datas + st_datas + [(os.path.join(project_root, '.streamlit'), '.streamlit')]
-
-# Added zmq here so the keygen menu doesn't crash when imported
-stu_hidden = ['streamlit', 'pandas', 'plotly', 'numpy', 'configparser', 'zmq']
+stu_hidden = ['streamlit', 'pandas', 'plotly', 'numpy', 'configparser', 'zmq', 'charset_normalizer'] + st_all_hidden
 
 a_stu = Analysis( #type: ignore
     [os.path.join(project_root, 'launcher.py')],
@@ -122,12 +122,15 @@ exe_stu = EXE( #type: ignore
     strip=False,
     upx=True,
     console=True,
+    icon=ICON,
     manifest=MANIFEST if os.path.exists(MANIFEST) else None,
     contents_directory='libs'
 )
 
 
+# =============================================================================
 #   FINAL MERGE & ORGANIZE
+# =============================================================================
 coll = COLLECT( #type: ignore
     exe_stream,
     a_stream.binaries,

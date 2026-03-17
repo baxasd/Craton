@@ -3,6 +3,7 @@ import sys
 import webbrowser
 from threading import Timer
 import streamlit.web.cli as stcli
+from core.ui.theme import APP_VERSION
 
 def open_browser():
     """Waits for the server to spin up, then opens the browser."""
@@ -14,12 +15,12 @@ if __name__ == "__main__":
         application_path = sys._MEIPASS
         os.chdir(application_path)
         
-    print("===================================================")
-    print(" OST STUDIO LAUNCHER ")
-    print("===================================================")
+    print("\n*******************************")
+    print(f"****** OST STUDIO {APP_VERSION} ******")
+    print("*******************************")
     print(" 1. Generate Security Keys")
     print(" 2. Launch OST Studio")
-    print("===================================================")
+    print("*******************************")
     
     choice = input("Enter your choice (1 or 2): ").strip()
     
@@ -32,16 +33,15 @@ if __name__ == "__main__":
         
     elif choice == '2':
         # Tell Streamlit to run the studio.py file headlessly
-        sys.argv = ["streamlit", "run", "core/studio/studio.py", "--server.headless=true", "--global.developmentMode=false"]
+        sys.argv = ["streamlit", "run", "core/studio/studio.py"]
         
         # Schedule the browser to open
         Timer(2.5, open_browser).start()
         
-        print("\n===================================================")
-        print(" OST STUDIO IS RUNNING ")
-        print(" DO NOT CLOSE THIS WINDOW. ")
-        print("===================================================")
-        
+        print("\n\n*******************************")
+        print("Launching OST Studio...")
+        print("*******************************")
+                
         # Boot the Streamlit server
         sys.exit(stcli.main())
         

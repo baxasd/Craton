@@ -1,44 +1,32 @@
+# core/studio/studio.py
 import streamlit as st
-import configparser
 
-# Import our modular page views
+# 1. Import from our centralized themes file!
+from core.ui.theme import LOGO_PATH, APP_VERSION, STUDIO_PASS, ICON_PATH
 from core.studio import hub, prep, analysis, radar, viz
 
+# ─── SET THE PAGE ICON ───
+st.set_page_config(page_title="OST Studio", page_icon=ICON_PATH, layout="wide", 
+                   initial_sidebar_state="expanded",
+                   menu_items={'About': f"### OST Suite\n**Version:** {APP_VERSION}\n\nDeveloped for OST Lab."})
 
-# ─── PAGE SETUP ──────────────────────────────────────────────────────────────
-st.set_page_config(page_title="OST Studio", layout="wide", initial_sidebar_state="expanded")
-
-st.markdown("""
-<style>    
+st.markdown("""<style>    
     .block-container { padding-top: 2rem !important; padding-bottom: 1rem !important; }
     [data-testid="stSidebarUserContent"] { padding-top: 0rem !important; }
-    [data-testid="stSidebarHeader"] { padding: 0rem !important; margin: 0rem !important; }       
-    }
-</style>
-""", unsafe_allow_html=True)
+    [data-testid="stSidebarHeader"] { padding: 0rem !important; margin: 0rem !important; }</style>""", unsafe_allow_html=True)
 
-# Load global configuration to fetch the studio password
-config = configparser.ConfigParser(interpolation=None)
-config.read('settings.ini')
-STUDIO_PASS = config.get('Security', 'studio_password', fallback='admin')
-
-# Auth
+# ─── AUTHENTICATION ───
 def check_password():
-    """Renders a centered login card and verifies the passcode."""
     if st.session_state.get("password_correct", False):
         return True
 
-    # Hide sidebar during login for a cleaner look
     st.markdown("""<style>[data-testid="stSidebar"] {display: none;}</style>""", unsafe_allow_html=True)
-
-    # Use columns to force the login card into the center of the screen
     _, center_col, _ = st.columns([2, 1.5, 2]) 
     
     with center_col:
         with st.container(border=True):
-            st.markdown("<h3 style='text-align: center;'>🔒 OST Studio Login</h3>", unsafe_allow_html=True)
-            st.write("") # Quick spacer
-            
+            st.markdown("## Login")
+
             pwd = st.text_input("Enter Passcode:", type="password")
             
             if pwd == STUDIO_PASS:  
@@ -49,14 +37,13 @@ def check_password():
     
     return False
 
-# Stop execution if not authenticated
 if not check_password():
     st.stop()
 
 
-# ─── SECURE APP ROUTER (Only runs if unlocked) ───────────────────────────────
+# ─── SECURE APP ROUTER ───
 with st.sidebar:
-    st.image("assets/logo-main-transp.png", width=150)
+    st.image(LOGO_PATH, width=140, )
 
 # Initialize States
 if 'current_page' not in st.session_state: st.session_state.current_page = "hub"

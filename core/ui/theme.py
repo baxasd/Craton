@@ -1,3 +1,7 @@
+import os
+import sys
+import configparser
+
 # =============================================================================
 # GLOBAL COLOR PALETTE & UI CONSTANTS
 # =============================================================================
@@ -31,3 +35,27 @@ TEXT_DIM = "#888888"                         # Dim gray for text labels
 # ── CLEAN UI CONSTANTS ───────────────────────────────────────────────────────
 COLOR_MAIN_BG  = "#FFFFFF"  # Pure white background
 COLOR_TEXT     = "#333333"  # Crisp dark gray text
+
+
+# ─── 1. BULLETPROOF PATH RESOLUTION ───
+if getattr(sys, 'frozen', False):
+    # If running as an .exe, the root is where the .exe lives
+    ROOT_DIR = os.path.dirname(sys.executable)
+else:
+    # If running from source (core/ui/themes.py), go up two levels to reach root
+    _current_dir = os.path.dirname(os.path.abspath(__file__))
+    ROOT_DIR = os.path.abspath(os.path.join(_current_dir, '..', '..'))
+
+# Safely construct absolute paths
+SETTINGS_PATH = os.path.join(ROOT_DIR, 'settings.ini')
+LOGO_PATH = os.path.join(ROOT_DIR, 'assets', 'logo.png')
+ICON_PATH = os.path.join(ROOT_DIR, 'assets', 'icon.ico')
+COMMAND_ICON = os.path.join(ROOT_DIR, 'assets', 'command.ico')
+
+# ─── 2. LOAD CONFIGURATIONS ───
+config = configparser.ConfigParser(interpolation=None)
+config.read(SETTINGS_PATH)
+
+# Export our global variables
+APP_VERSION = "v0.3.0"
+STUDIO_PASS = config.get('Security', 'studio_password', fallback='admin')

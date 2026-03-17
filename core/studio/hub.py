@@ -1,4 +1,5 @@
 import streamlit as st
+from core.ui.theme import LOGO_PATH
 
 def render():
     # Hide the sidebar for a focused, distraction-free hub
@@ -8,10 +9,8 @@ def render():
     _, center_col, _ = st.columns([1, 3, 1])
 
     with center_col:
-        # Native headers
         
-        st.image("assets/logo-main-transp.png", width=150)
-        # st.title("OST Studio")
+        st.image(LOGO_PATH, width=150)
         st.markdown("##### Osteo-Skeletal Tracker Suite")
         st.caption("Select an analytical module to begin your workflow.")
 
