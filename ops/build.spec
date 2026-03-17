@@ -1,82 +1,106 @@
 import sys
 import os
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, copy_metadata
 
-# 1. PATHS
-# SPECPATH is a PyInstaller global that points to the folder containing this .spec file (ops/)
+# Paths
+
 project_root = os.path.abspath(os.path.join(SPECPATH, '..')) #type: ignore
-
-# Add the project root to sys.path so we can import our config directly
 sys.path.insert(0, project_root)
-from core.config import APP_NAME, ICON, COMMAND_ICON
 
-# Explicit asset paths for the builder
-SPLASH_IMG = os.path.join(project_root, 'assets', 'splash.png')
 MANIFEST = os.path.join(project_root, 'ops', 'manifest.xml')
-DLL_FIX = os.path.join(project_root, 'ops', 'dllFix.py')
-
 block_cipher = None
 
-# 2. COLLECT EXTERNAL LIBRARIES
+# COLLECT EXTERNAL LIBRARIES
+
 mp_datas, mp_binaries, mp_hidden = collect_all('mediapipe')
 rs_datas, rs_binaries, rs_hidden = collect_all('pyrealsense2')
 cv_datas, cv_binaries, cv_hidden = collect_all('cv2')
+st_datas = copy_metadata('streamlit') + copy_metadata('plotly')
 
-# Merge Data & Hidden Imports
-final_datas = [(os.path.join(project_root, 'assets'), 'assets')] + mp_datas + rs_datas + cv_datas
-final_hidden = mp_hidden + rs_hidden + cv_hidden + ['pyarrow.vendored.version']
+# SHARED DATA & Imports
 
-# =============================================================================
-#   BUILD 1: RECORDER
-# =============================================================================
-rec_hidden = final_hidden + ['sensors.realsense', 'core.storage', 'core.pose', 'core.depth', 'core.config']
+shared_datas = [
+    (os.path.join(project_root, 'assets'), 'assets'),
+    (os.path.join(project_root, 'core'), 'core'),
+    (os.path.join(project_root, 'settings-template.ini'), '.')
+]
 
-a_rec = Analysis( #type: ignore
-    [os.path.join(project_root, 'apps', 'record', 'record.py')],
+# Base hidden imports for hardware & network
+base_hidden = mp_hidden + rs_hidden + cv_hidden + ['pyarrow.vendored.version', 'zmq']
+
+#   BUILD 1: STREAM (PUBLISHER NODE)
+
+a_stream = Analysis( #type: ignore
+    [os.path.join(project_root, 'stream.py')],
     pathex=[project_root],
-    datas=final_datas,
-    hiddenimports=rec_hidden,
-    runtime_hooks=[DLL_FIX],
+    datas=shared_datas + mp_datas + rs_datas + cv_datas,
+    hiddenimports=base_hidden + ['sensors'],
+    runtime_hooks=[]
     excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
     noarchive=False,
 )
-pyz_rec = PYZ(a_rec.pure, a_rec.zipped_data, cipher=block_cipher) #type: ignore
+pyz_stream = PYZ(a_stream.pure, a_stream.zipped_data, cipher=block_cipher) #type: ignore
 
-if os.path.exists(SPLASH_IMG):
-    splash_rec = Splash(SPLASH_IMG, binaries=a_rec.binaries, datas=a_rec.datas, text_size=12, minify_script=True, always_on_top=True) #type: ignore
-    rec_splash_args = [splash_rec, splash_rec.binaries]
-else:
-    rec_splash_args = []
-
-exe_rec = EXE( #type: ignore
-    pyz_rec,
-    a_rec.scripts,
-    *rec_splash_args,
+exe_stream = EXE( #type: ignore
+    pyz_stream,
+    a_stream.scripts,
     [],
     exclude_binaries=True,
-    name='record',
+    name='OSTStreamer',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,
-    icon=COMMAND_ICON,
-    manifest=MANIFEST,
+    console=True,
+    manifest=MANIFEST if os.path.exists(MANIFEST) else None,
     contents_directory='libs'
 )
 
-# =============================================================================
-#   BUILD 2: STUDIO
-# =============================================================================
-stu_hidden = final_hidden + ['core.data', 'core.math', 'core.filters', 'core.widgets', 'core.render', 'core.config', 'pyqtgraph', 'pandas']
+#   BUILD 2: VIEW (SUBSCRIBER NODE)
+
+a_view = Analysis( #type: ignore
+    [os.path.join(project_root, 'view.py')],
+    pathex=[project_root],
+    datas=shared_datas,
+    hiddenimports=base_hidden + ['pyqtgraph'],
+    runtime_hooks=[],
+    excludes=[],
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+pyz_view = PYZ(a_view.pure, a_view.zipped_data, cipher=block_cipher) #type: ignore
+
+exe_view = EXE( #type: ignore
+    pyz_view,
+    a_view.scripts,
+    [],
+    exclude_binaries=True,
+    name='OSTViewer',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=True,
+    manifest=MANIFEST if os.path.exists(MANIFEST) else None,
+    contents_directory='libs'
+)
+
+
+#   BUILD 3: STUDIO (LAUNCHER + LAB + KEY)
+stu_datas = shared_datas + st_datas + [(os.path.join(project_root, '.streamlit'), '.streamlit')]
+
+# Added zmq here so the keygen menu doesn't crash when imported
+stu_hidden = ['streamlit', 'pandas', 'plotly', 'numpy', 'configparser', 'zmq']
 
 a_stu = Analysis( #type: ignore
-    [os.path.join(project_root, 'apps', 'studio', 'studio.py')], 
+    [os.path.join(project_root, 'launcher.py')],
     pathex=[project_root],
-    datas=final_datas,
+    datas=stu_datas,
     hiddenimports=stu_hidden,
     runtime_hooks=[],
     excludes=[],
@@ -85,77 +109,35 @@ a_stu = Analysis( #type: ignore
     cipher=block_cipher,
     noarchive=False,
 )
-pyz_stu = PYZ(a_stu.pure, a_stu.zipped_data, cipher=block_cipher)  #type: ignore
-
-if os.path.exists(SPLASH_IMG):
-    splash_stu = Splash(SPLASH_IMG, binaries=a_stu.binaries, datas=a_stu.datas, text_size=12, minify_script=True, always_on_top=True) #type: ignore
-    stu_splash_args = [splash_stu, splash_stu.binaries]
-else:
-    stu_splash_args = []
+pyz_stu = PYZ(a_stu.pure, a_stu.zipped_data, cipher=block_cipher) #type: ignore
 
 exe_stu = EXE( #type: ignore
     pyz_stu,
     a_stu.scripts,
-    *stu_splash_args,
     [],
     exclude_binaries=True,
-    name='studio',
+    name='OSTStudio',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    console=False,
-    icon=COMMAND_ICON,
-    manifest=MANIFEST,
+    console=True,
+    manifest=MANIFEST if os.path.exists(MANIFEST) else None,
     contents_directory='libs'
 )
 
-# =============================================================================
-#   BUILD 3: LAUNCHER (MAIN)
-# =============================================================================
-a_main = Analysis( #type: ignore
-    [os.path.join(project_root, 'main.py')],
-    pathex=[project_root],
-    binaries=[],
-    datas=[(os.path.join(project_root, 'assets'), 'assets')],
-    hiddenimports=['core.config'],
-    excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
-    noarchive=False,
-)
-pyz_main = PYZ(a_main.pure, a_main.zipped_data, cipher=block_cipher) #type: ignore
 
-exe_main = EXE( #type: ignore
-    pyz_main,
-    a_main.scripts,
-    [],
-    exclude_binaries=True,
-    name='Launcher',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    console=False,
-    icon=ICON,
-    manifest=MANIFEST,
-    contents_directory='libs'
-)
-
-# =============================================================================
 #   FINAL MERGE & ORGANIZE
-# =============================================================================
 coll = COLLECT( #type: ignore
-    exe_main,
-    a_main.binaries,
-    a_main.zipfiles,
-    a_main.datas,
+    exe_stream,
+    a_stream.binaries,
+    a_stream.zipfiles,
+    a_stream.datas,
     
-    exe_rec,
-    a_rec.binaries,
-    a_rec.zipfiles,
-    a_rec.datas,
+    exe_view,
+    a_view.binaries,
+    a_view.zipfiles,
+    a_view.datas,
     
     exe_stu,
     a_stu.binaries,
@@ -165,6 +147,6 @@ coll = COLLECT( #type: ignore
     strip=False,
     upx=True,
     upx_exclude=[],
-    name=APP_NAME,
-    contents_directory='libs'
+    name='OST Suite',
+    contents_directory='libs' 
 )

@@ -2,7 +2,8 @@ import streamlit as st
 import configparser
 
 # Import our modular page views
-from core.pages import hub, prep, analysis, radar, viz
+from core.studio import hub, prep, analysis, radar, viz
+
 
 # ─── PAGE SETUP ──────────────────────────────────────────────────────────────
 st.set_page_config(page_title="OST Studio", layout="wide", initial_sidebar_state="expanded")
