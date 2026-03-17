@@ -13,59 +13,39 @@ OST Suite is a high-performance, distributed workstation for recording, processi
 
 ---
 
-## 🛠 The Three Core Modules
+## The Three Core Modules
 
-### 1. 📡 OST Publisher (`stream.py`)
+### OST Publisher (`stream.py`)
 The hardware-interfacing node. 
 
-### 2. 🖥️ OST Viewer (`view.py`)
+### OST Viewer (`view.py`)
 The live monitoring dashboard. 
 
-### 3. 🔬 OST Studio (`studio.py`)
+### OST Studio (`studio.py`)
 The offline analysis laboratory. Streamlit web app for post-processing recorded sessions.
 
 ---
 
-## 📥 Quick Start Setup
+## Quick Start Setup
 
-**1. Clone the Repository & Environment**
+**1. Clone the Repository & Create Virtual Environment**
 
-**2. Install Dependencies**
-```bash
-pip install -r requirements.txt
-```
+**2. Install Dependencies** - install using requirements.txt
 
-**3. Configure Settings**
-We don't hardcode variables. Everything is managed in a central settings file. Copy the template to get started:
-```bash
-cp settings-template.ini settings.ini
-```
+**3. Configure Settings** - Everything is managed in a central settings file. Copy the template to get started:
 
 **4. Generate Security Keys**
-Because OST encrypts all network traffic, you must generate a pair of cryptographic keys before streaming.
-```bash
-python keygen.py
-```
+Because OST encrypts all network traffic, you must generate a pair of cryptographic keys before streaming
 *Copy the terminal output and paste it at the bottom of new `settings.ini` file.*
 
 ---
 
-## 🚀 Running the Suite
+## Running the Suite
 
 Ensure your hardware is plugged in and your `settings.ini` has the correct COM ports and IPs defined.
 
-**Start the Hardware Capture:**
-```bash
-python stream.py
-```
+**Start the Hardware Capture:** - If running both radar and camera, it should be done in separate computers or terminals
 
-**Watch the Live Feed:**
-*(Open a new terminal or run on a different computer)*
-```bash
-python view.py
-```
+**Watch the Live Feed:** - Make sure you have generated keypair for encyrption
 
-**Analyze Recorded Data:**
-```bash
-streamlit run studio.py
-```
+**Analyze Recorded Data:** - Streamlit program offers to analyze parquet files offline

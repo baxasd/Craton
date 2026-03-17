@@ -1,10 +1,14 @@
+# Import ZeroMQ
 import zmq
-import streamlit_authenticator as stauth
 
+# Define Variables
 server_public, server_secret = zmq.curve_keypair()
 client_public, client_secret = zmq.curve_keypair()
-studio_pass = input("Enter Password for OSTStudio: ")
 
+# Ask password for Studio
+studio_pass = input("Enter Password for OST Studio: ")
+
+# Print resuts
 print("\n--- Paste this into your settings.ini ---\n")
 print("-----------------------------------------")
 print("[Security]")
