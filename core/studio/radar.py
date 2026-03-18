@@ -7,86 +7,133 @@ import configparser
 
 from core.radar.parser import RadarConfig
 from core.radar.dsp import RecordingSession, extract_gait_metrics
-from core.ui.theme import COLOR_RADAR_BG, COLOR_CENTROID_MAIN, COLOR_CENTROID_SHADOW, COLOR_ZERO_LINE, SETTINGS_PATH
+from core.ui.theme import (
+    COLOR_RADAR_BG,
+    COLOR_CENTROID_MAIN,
+    COLOR_CENTROID_SHADOW,
+    COLOR_ZERO_LINE,
+    SETTINGS_PATH,
+)
+
 
 # ─── CACHED FFT DSP ENGINE ───────────────────────────────────────────────────
 @st.cache_data(show_spinner=False)
 def process_radar_data(file_bytes, range_lo, range_hi, smooth_window):
     """
-    Saves the uploaded RAM buffer to a temp file, runs the heavy Texas Instruments 
+    Saves the uploaded RAM buffer to a temp file, runs the heavy Texas Instruments
     parser and FFT math, and returns the raw arrays.
     """
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.parquet') as tmp:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".parquet") as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name
 
     try:
         config = configparser.ConfigParser(interpolation=None)
         config.read(SETTINGS_PATH)
-        hw_cfg_file = config.get('Hardware', 'radar_cfg_file')
-        
+        hw_cfg_file = config.get("Hardware", "radar_cfg_file")
+
         try:
             radar_cfg = RadarConfig(hw_cfg_file)
         except:
             radar_cfg = None
 
         session = RecordingSession(tmp_path, radar_cfg)
-        spec, t_axis, v_axis, centroid = session.build_spectrogram(range_lo, range_hi, smooth_window)
+        spec, t_axis, v_axis, centroid = session.build_spectrogram(
+            range_lo, range_hi, smooth_window
+        )
         peak_v, mean_abs, spm = extract_gait_metrics(spec, t_axis, v_axis)
-        
+
         fps = session.num_frames / session.duration_s if session.duration_s > 0 else 0
         res = radar_cfg.dopRes if radar_cfg else 0.0
 
-        return spec, t_axis, v_axis, centroid, peak_v, mean_abs, spm, session.duration_s, session.num_frames, fps, res
-        
+        return (
+            spec,
+            t_axis,
+            v_axis,
+            centroid,
+            peak_v,
+            mean_abs,
+            spm,
+            session.duration_s,
+            session.num_frames,
+            fps,
+            res,
+        )
+
     finally:
         os.remove(tmp_path)
 
 
 def render():
-    
+
     st.title("Radar Spectrogram Analysis")
 
     with st.sidebar:
         st.markdown("# Controls")
-        
-        uploaded_file = st.file_uploader("Select File", type=['parquet'], key="radar_up")
-        
+
+        uploaded_file = st.file_uploader(
+            "Select File", type=["parquet"], key="radar_up"
+        )
+
         st.subheader("Range Gate")
         col_lo, col_hi = st.columns(2)
-        range_lo = col_lo.number_input("Min Range", min_value=0.0, max_value=49.0, value=0.0, step=0.1)
-        range_hi = col_hi.number_input("Max Range", min_value=0.1, max_value=50.0, value=5.0, step=0.1)
-        
+        range_lo = col_lo.number_input(
+            "Min Range", min_value=0.0, max_value=49.0, value=0.0, step=0.1
+        )
+        range_hi = col_hi.number_input(
+            "Max Range", min_value=0.1, max_value=50.0, value=5.0, step=0.1
+        )
+
         st.subheader("Visuals")
-        
-        cmap_mapping = {'Jet': 'Jet', 'Inferno': 'Inferno', 'Plasma': 'Plasma'}
+
+        cmap_mapping = {"Jet": "Jet", "Inferno": "Inferno", "Plasma": "Plasma"}
         cmap_sel = st.selectbox("Colormap:", list(cmap_mapping.keys()), index=0)
         plotly_cmap = cmap_mapping[cmap_sel]
-        
-        cont_lo, cont_hi = st.slider("Contrast Percentiles:", min_value=0.0, max_value=100.0, value=(40.0, 99.5), step=0.5)
-        smooth_win = st.number_input("Smoothing Window:", min_value=1, max_value=10, value=3, step=1)
+
+        cont_lo, cont_hi = st.slider(
+            "Contrast Percentiles:",
+            min_value=0.0,
+            max_value=100.0,
+            value=(40.0, 99.5),
+            step=0.5,
+        )
+        smooth_win = st.number_input(
+            "Smoothing Window:", min_value=1, max_value=10, value=3, step=1
+        )
         show_centroid = st.checkbox("Overlay Cadence Line", value=True)
-        
+
         st.markdown("---")
-        
-        if st.button("Back to Menu", width='stretch'):
+
+        if st.button("Back to Menu", width="stretch"):
             st.session_state.current_page = "hub"
             st.rerun()
 
     if uploaded_file is not None:
         with st.spinner("Crunching Micro-Doppler FFTs..."):
-            
-            spec, t_axis, v_axis, centroid, peak_v, mean_abs, spm, dur, frames, fps, res = process_radar_data(
+
+            (
+                spec,
+                t_axis,
+                v_axis,
+                centroid,
+                peak_v,
+                mean_abs,
+                spm,
+                dur,
+                frames,
+                fps,
+                res,
+            ) = process_radar_data(
                 uploaded_file.getvalue(), range_lo, range_hi, int(smooth_win)
             )
 
         # ─── 1. METRICS SECTION (MOVED TO TOP) ───
         st.subheader("Session Statistics")
         st.caption("Aggregated gait and motion metrics.")
-        
+
         with st.container(border=True):
             st.markdown("**Core Metrics**")
-            
+
             cadence_str = f"{spm:.0f}" if spm > 0 else "--"
             metrics_data = [
                 ("Cadence", f"{cadence_str} SPM"),
@@ -94,9 +141,9 @@ def render():
                 ("Mean |Vel|", f"{mean_abs:.2f} m/s"),
                 ("Duration", f"{dur:.1f} s"),
                 ("FPS", f"{fps:.1f}"),
-                ("Total Frames", f"{int(frames)}")
+                ("Total Frames", f"{int(frames)}"),
             ]
-            
+
             html_block = ""
             for label, val_str in metrics_data:
                 html_block += f"""
@@ -105,36 +152,62 @@ def render():
                     <strong>{val_str}</strong>
                 </div>
                 """
-            
+
             st.markdown(html_block, unsafe_allow_html=True)
 
-        st.write("") # Quick spacer
+        st.write("")  # Quick spacer
 
         # ─── 2. SPECTROGRAM SECTION (MOVED BELOW) ───
         st.subheader("Micro-Doppler Spectrogram")
         st.caption("Time-velocity distribution of the target.")
-        
+
         with st.container(border=True):
             sub_spec = spec[::4, ::4]
             z_min = float(np.percentile(sub_spec, cont_lo))
             z_max = float(np.percentile(sub_spec, cont_hi))
-            if z_min >= z_max: z_max = z_min + 0.1
-            
+            if z_min >= z_max:
+                z_max = z_min + 0.1
+
             fig = go.Figure()
-            
-            fig.add_trace(go.Heatmap(
-                z=spec.T, x=t_axis, y=v_axis,
-                colorscale=plotly_cmap,
-                zmin=z_min, zmax=z_max,
-                hoverinfo='skip', 
-                showscale=False   
-            ))
+
+            fig.add_trace(
+                go.Heatmap(
+                    z=spec.T,
+                    x=t_axis,
+                    y=v_axis,
+                    colorscale=plotly_cmap,
+                    zmin=z_min,
+                    zmax=z_max,
+                    hoverinfo="skip",
+                    showscale=False,
+                )
+            )
 
             if show_centroid and centroid is not None:
-                fig.add_trace(go.Scatter(x=t_axis, y=centroid, mode='lines', line=dict(color=COLOR_CENTROID_SHADOW, width=4), hoverinfo='skip', showlegend=False))
-                fig.add_trace(go.Scatter(x=t_axis, y=centroid, mode='lines', name='Mass Centroid', line=dict(color=COLOR_CENTROID_MAIN, width=1.5),  showlegend=False))
+                fig.add_trace(
+                    go.Scatter(
+                        x=t_axis,
+                        y=centroid,
+                        mode="lines",
+                        line=dict(color=COLOR_CENTROID_SHADOW, width=4),
+                        hoverinfo="skip",
+                        showlegend=False,
+                    )
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=t_axis,
+                        y=centroid,
+                        mode="lines",
+                        name="Mass Centroid",
+                        line=dict(color=COLOR_CENTROID_MAIN, width=1.5),
+                        showlegend=False,
+                    )
+                )
 
-            fig.add_hline(y=0, line_dash="dash", line_color=COLOR_ZERO_LINE, line_width=1)
+            fig.add_hline(
+                y=0, line_dash="dash", line_color=COLOR_ZERO_LINE, line_width=1
+            )
 
             fig.update_layout(
                 xaxis_title="Time (Seconds)",
@@ -142,10 +215,10 @@ def render():
                 height=600,
                 margin=dict(l=0, r=0, t=10, b=0),
                 plot_bgcolor=COLOR_RADAR_BG,
-                paper_bgcolor='rgba(0,0,0,0)'
+                paper_bgcolor="rgba(0,0,0,0)",
             )
 
             st.plotly_chart(fig, width="stretch")
-            
+
     else:
         st.info("Upload a dataset to generate spectrogram.")

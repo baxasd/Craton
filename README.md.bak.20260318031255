@@ -4,7 +4,7 @@
 
 #### Osteo-Skeletal Tracker & Telemetry
 
-OST Suite is a high-performance, distributed workstation for recording, processing, and visualizing multi-modal skeletal kinematics and micro-Doppler radar data.
+OST Suite is a high-performance, distributed workstation for recording, processing, and visualizing multi-modal skeletal kinematics and micro-Doppler radar data. 
 
 ![Version](https://img.shields.io/badge/version-0.3.0--beta.1-orange)
 ![Python](https://img.shields.io/badge/python-3.11-green)
@@ -30,9 +30,9 @@ The offline analysis laboratory. A specialized workbench for post-processing rec
 ## Quick Start (Standalone Beta)
 
 1. **Download:** Get the latest release `.zip` and extract it.
-2. **Configure:** Rename `settings-template.ini` to `settings.ini` inside the `libs` directory.
+2. **Configure:** Rename `settings-template.ini` to `settings.ini` inside libs directory.
 3. **Security Keys:** Run the Keygen tool through `Studio.exe` to generate Curve25519 keys. Paste the output into your `settings.ini`.
-4. **Launch:** Launch the modules.
+4. **Launch:** Launch modules
 
 ---
 
@@ -53,9 +53,5 @@ If you prefer to run from source code:
 1. Clone the repository and create a Python 3.11 virtual environment.
 2. `pip install -r requirements.txt`
 3. Generate keys: `python core/studio/keys.py`
-4. Setup `settings.ini` as described at the beginning of this file.
-5. Run the modules directly.
-```
-
-Changes made:
-- Added missing directory name in the `Configure` step of the Quick Start section.
+4. Setup `settings.ini` as described at the beginning of this file
+4. Run modules directly

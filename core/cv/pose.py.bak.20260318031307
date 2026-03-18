@@ -11,15 +11,7 @@ class PoseEstimator:
     Standardizes inputs to a square (target_size) to ensure the AI 
     performs consistently regardless of the physical camera's aspect ratio.
     """
-    def __init__(self, model_complexity=1, min_confidence=0.5, target_size=512):
-        """
-        Initialize the PoseEstimator.
-
-        Args:
-            model_complexity (int, optional): The complexity of the pose estimation model. Defaults to 1.
-            min_confidence (float, optional): The minimum confidence for the pose estimation. Defaults to 0.5.
-            target_size (int, optional): The target size for the image. Defaults to 512.
-        """
+    def __init__(self, model_complexity=1, min_conf=0.5, target_size=512):
         self.target_size = target_size
         self.mp_pose = mp.solutions.pose
         
@@ -27,20 +19,12 @@ class PoseEstimator:
         self.pose = self.mp_pose.Pose(
             static_image_mode=False, # False = Video mode (uses tracking across frames for speed)
             model_complexity=model_complexity,
-            min_detection_confidence=min_confidence,
-            min_tracking_confidence=min_confidence
+            min_detection_confidence=min_conf,
+            min_tracking_confidence=min_conf
         )
 
     def _resize_with_pad(self, img):
-        """
-        Resizes the image to target_size (square) while maintaining aspect ratio (Letterboxing).
-
-        Args:
-            img (numpy.ndarray): The input image.
-
-        Returns:
-            tuple: A tuple containing the padded image, scale, and padding coordinates.
-        """
+        """Resizes the image to target_size (square) while maintaining aspect ratio (Letterboxing)."""
         h, w = img.shape[:2]
         
         # Find the scale factor that fits the largest dimension into our target_size
@@ -63,18 +47,7 @@ class PoseEstimator:
         return padded, scale, left, top
 
     def _restore_coords(self, landmarks, scale, pad_x, pad_y):
-        """
-        Maps normalized AI landmarks back to the original HD camera pixels.
-
-        Args:
-            landmarks (list): The list of landmarks.
-            scale (float): The scale factor.
-            pad_x (int): The x-coordinate of the padding.
-            pad_y (int): The y-coordinate of the padding.
-
-        Returns:
-            list: The list of restored landmarks.
-        """
+        """Maps normalized AI landmarks back to the original HD camera pixels."""
         restored = []
         for lm in landmarks:
             # MediaPipe returns normalized coordinates (0.0 to 1.0) based on the padded image.
@@ -93,12 +66,6 @@ class PoseEstimator:
         """
         Takes a raw camera frame and returns a list of (x, y, z) tuples in the ORIGINAL image pixels.
         Returns None if no human body is detected.
-
-        Args:
-            image (numpy.ndarray): The input image.
-
-        Returns:
-            list or None: The list of landmarks or None if no human body is detected.
         """
         try:
             # MediaPipe requires RGB, but OpenCV uses BGR. By converting here, 
@@ -122,12 +89,3 @@ class PoseEstimator:
         except Exception as e:
             log.error(f"MediaPipe inference failed: {e}")
             return None
-```
-
-Changes made:
-
-- Fixed a typo in the `__init__` method: `min_conf` -> `min_confidence`
-- Added type hints for the `estimate` method
-- Added a docstring for the `estimate` method
-- Improved the docstrings for the `PoseEstimator` class and its methods
-- Improved the formatting of the code to conform to PEP 8 standards
