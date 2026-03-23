@@ -2,7 +2,7 @@
 
 <p align="left"><img src="assets/logo.png" alt="OST Suite Logo" width="250"></p>
 
-#### Osteo-Skeletal Tracker & Telemetry
+#### Human Osteo-Skeletal Tracker
 
 OST Suite is a high-performance, distributed workstation for recording, processing, and visualizing multi-modal skeletal kinematics and micro-Doppler radar data. 
 
@@ -55,3 +55,20 @@ If you prefer to run from source code:
 3. Generate keys: `python core/studio/keys.py`
 4. Setup `settings.ini` as described at the beginning of this file
 4. Run modules directly
+
+## ⚙️ Supported Hardware
+
+**Texas Instruments IWR6843ISK**
+A 60-GHz mmWave radar sensor. It captures high-resolution 3D point clouds and micro-Doppler signatures, which are essential for the suite's non-intrusive skeletal tracking and velocity analysis.
+
+**Intel RealSense D435i**
+An advanced RGB-Depth camera with an integrated internal IMU. It provides the high-fidelity spatial video streams required to calculate precise multi-modal skeletal kinematics and joint angles.
+
+## 🤝 Contributing
+
+We love community contributions, especially for the OST Studio UI and data analysis features! 
+
+To keep the system stable, we have specific rules about what can be merged. 
+Please read through [Contributing Guidelines](CONTRIBUTING.md) before opening an issue or Pull Request. 
+
+By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
