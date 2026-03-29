@@ -7,7 +7,7 @@
 OST Suite is a high-performance, distributed workstation for recording, processing, and visualizing multi-modal skeletal kinematics and micro-Doppler radar data. 
 
 ![Version](https://img.shields.io/badge/version-0.3.1--beta.1-orange)
-![Python](https://img.shields.io/badge/python-3.11-green)
+![Python](https://img.shields.io/badge/python-3.12-green)
 ![ZeroMQ](https://img.shields.io/badge/ZeroMQ-Curve25519-red)
 
 > **⚠️ Beta Release:** Version 0.3.1-beta.1 introduces standalone `.exe` packaging. Please report any bugs or errors in the Issues tab.
@@ -51,7 +51,7 @@ If you prefer to run from source code:
 
 1. Clone the repository and create a Python 3.11 virtual environment.
 2. `pip install -r requirements.txt`
-3. Generate keys: `python keygen.py`
+3. Generate keys: `python keygen.py` - move generated settings.ini file inside libs folder
 4. Run modules directly
 
 ## ⚙️ Supported Hardware
