@@ -154,12 +154,14 @@ def run_camera_stream(zmq_context: zmq.Context, record: bool):
                 for i, (lx, ly, lz) in enumerate(landmarks):
                     cx, cy = int(lx), int(ly)
                     if 0 <= cx < w and 0 <= cy < h:
-                        cv2.circle(color_img, (cx, cy), 3, (0, 255, 0), -1)
+                        #cv2.circle(color_img, (cx, cy), 3, (0, 255, 0), -1)
                         if depth_intrin:
                             dist = get_mean_depth(depth_frame, cx, cy, w, h)
                             if dist:
                                 p = deproject_pixel_to_point(depth_intrin, cx, cy, dist)
                                 frame_data[f"j{i}_x"], frame_data[f"j{i}_y"], frame_data[f"j{i}_z"] = p
+                                frame_data[f"j{i}_px"] = cx
+                                frame_data[f"j{i}_py"] = cy
 
             # Compress video frame to JPEG payload
             ret, jpeg_buffer = cv2.imencode('.jpg', color_img, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_qual])
