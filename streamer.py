@@ -10,7 +10,14 @@ import cv2
 import numpy as np
 from core.radar.parser import parse_standard_frame
 from core.io.storage import CameraSessionWriter, RadarSessionWriter
-from core.ui.theme import APP_VERSION, SETTINGS_PATH
+from core.ui.theme import SETTINGS_PATH
+from rich.console import Console, Group
+from rich.panel import Panel
+from rich.prompt import Prompt
+from rich.rule import Rule
+
+# Rich Console
+console = Console()
 
 # Setup timestamped console logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
@@ -167,24 +174,20 @@ def run_camera_stream(zmq_context: zmq.Context, record: bool):
 
             ret, jpeg_buffer = cv2.imencode('.jpg', color_img, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_qual])
             
-            # --- NEW: Process and compress Depth image ---
             ret_depth = False
             if depth_frame:
-                # Convert raw depth to numpy array
                 depth_array = np.asanyarray(depth_frame.get_data())
-                # Scale the 16-bit data to 8-bit and apply a heatmap colorizer
-                depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_array, alpha=0.03), cv2.COLORMAP_JET)
-                # Compress to JPEG
+                depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_array, alpha=0.045), cv2.COLORMAP_JET)
                 ret_depth, depth_jpeg = cv2.imencode('.jpg', depth_colormap, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_qual])
             
-            # Broadcast everything at once
+            # Broadcast
             if ret and ret_depth:
                 network_payload = {**frame_data, **ui_data}
                 
                 zmq_socket.send_multipart([
                     json.dumps(network_payload).encode('utf-8'),
                     jpeg_buffer.tobytes(),
-                    depth_jpeg.tobytes() # <-- The new 3rd frame
+                    depth_jpeg.tobytes()
                 ])
 
             if record and writer:
@@ -201,30 +204,34 @@ def run_camera_stream(zmq_context: zmq.Context, record: bool):
 def main():
     """CLI bootstrapper and context manager."""
     context = zmq.Context()
-    
+
+    menu_content = Group(
+        Rule("Radar", align="center", style="line"),
+        "  [red]1.[/red] Preview Radar",
+        "  [red]2.[/red] Record Radar",
+        Rule("Camera", align="center", style="line"),
+        "  [red]3.[/red] Preview Camera",
+        "  [red]4.[/red] Record Camera",
+        Rule(align="left", style="line"),
+        "  [red]0.[/red] Exit"
+    )
+
     while True:
-        print("\n*******************************")
-        print(f"***** OST STREAMER {APP_VERSION} *****")
-        print("*******************************")
-        print("  1. Preview Radar")
-        print("  2. Record Radar")
-        print("*******************************")
-        print("  3. Preview Camera")
-        print("  4. Record Camera")
-        print("*******************************")
-        print("  0. Exit")
+        console.clear() 
+        console.print(Panel(menu_content, title="[bold] Craton Engine [/bold]", expand=False))
+        choice = Prompt.ask("\nSelect operation", choices=["0", "1", "2", "3", "4"], default="1")
         
-        choice = input("\nSelect an option: ").strip()
-        
-        if choice == '1': run_radar_stream(context, record=False)
-        elif choice == '2': run_radar_stream(context, record=True)
-        elif choice == '3': run_camera_stream(context, record=False)
-        elif choice == '4': run_camera_stream(context, record=True)
+        if choice == '1': 
+            run_radar_stream(context, record=False)
+        elif choice == '2': 
+            run_radar_stream(context, record=True)
+        elif choice == '3': 
+            run_camera_stream(context, record=False)
+        elif choice == '4': 
+            run_camera_stream(context, record=True)
         elif choice == '0':
-            print("Exiting...")
+            console.print("[dim]Exiting...[/dim]")
             break
-        else: 
-            print("Invalid choice.")
 
     context.term()
     sys.exit(0)

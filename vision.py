@@ -8,13 +8,19 @@ import scipy.ndimage as ndimage
 import pyqtgraph as pg
 import configparser
 import cv2  
+from rich.console import Console
+from rich.prompt import Prompt
+import time
 
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QFrame, QSizePolicy)
 from PyQt6.QtGui import QPixmap, QIcon, QImage, QFont
 
 from core.radar.parser import RadarConfig
-from core.ui.theme import APP_VERSION, ICON_PATH, SETTINGS_PATH
+from core.ui.theme import ICON_PATH, SETTINGS_PATH
+
+# Initialize console globally (or at the top of your file)
+console = Console()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s", datefmt="%H:%M:%S")
 log = logging.getLogger("Viewer")
@@ -384,9 +390,8 @@ class LiveViewerWindow(QMainWindow):
         event.accept()
 
 def main():
-    print(f"Craton Vision - {APP_VERSION}")
-    ip_input = input("\nEnter Stream IP. Leave blank for localhost: ").strip()
-    ip = VIEW_IP if not ip_input else ip_input
+    console.print(f"\n[bold]Craton Vision[/bold]\n") 
+    ip = Prompt.ask("Enter Stream IP", default=VIEW_IP).strip()
             
     app = QApplication.instance() or QApplication(sys.argv)
 
@@ -397,11 +402,16 @@ def main():
     pg.setConfigOptions(imageAxisOrder="row-major", antialias=True)
     
     try:
-        cfg = RadarConfig(HW_CFG_FILE)
-        window = LiveViewerWindow(cfg, ip)
+        with console.status("[dim]Initializing engine and connecting to streams...[/dim]", spinner="dots"):
+            time.sleep(3)
+            cfg = RadarConfig(HW_CFG_FILE)
+            window = LiveViewerWindow(cfg, ip)
+        console.print("[green]✔[/green] [dim]Engine active. Launching interface...[/dim]\n")
+        
         window.show()
         app.exec()
     except Exception as e:
+        console.print(f"\n[bold red]Fatal Error:[/bold red] {e}")
         log.error(f"Failed to initialize: {e}")
 
 if __name__ == "__main__":
