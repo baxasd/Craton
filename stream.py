@@ -7,6 +7,7 @@ import zmq
 import json
 import configparser
 import cv2
+import numpy as np
 from core.radar.parser import parse_standard_frame
 from core.io.storage import CameraSessionWriter, RadarSessionWriter
 from core.ui.theme import APP_VERSION, SETTINGS_PATH
@@ -146,30 +147,44 @@ def run_camera_stream(zmq_context: zmq.Context, record: bool):
             h, w, _ = color_img.shape
             landmarks = pose.estimate(color_img)
             frame_data = {"timestamp": time.time()}
+            ui_data = {}
             
             depth_intrin = depth_frame.profile.as_video_stream_profile().intrinsics if depth_frame else None
 
-            # Process 3D coordinates for skeleton joints
             if landmarks:
                 for i, (lx, ly, lz) in enumerate(landmarks):
                     cx, cy = int(lx), int(ly)
                     if 0 <= cx < w and 0 <= cy < h:
-                        #cv2.circle(color_img, (cx, cy), 3, (0, 255, 0), -1)
+                        
+                        ui_data[f"j{i}_px"] = cx
+                        ui_data[f"j{i}_py"] = cy
+                        
                         if depth_intrin:
                             dist = get_mean_depth(depth_frame, cx, cy, w, h)
                             if dist:
                                 p = deproject_pixel_to_point(depth_intrin, cx, cy, dist)
                                 frame_data[f"j{i}_x"], frame_data[f"j{i}_y"], frame_data[f"j{i}_z"] = p
-                                frame_data[f"j{i}_px"] = cx
-                                frame_data[f"j{i}_py"] = cy
 
-            # Compress video frame to JPEG payload
             ret, jpeg_buffer = cv2.imencode('.jpg', color_img, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_qual])
             
-            if ret:
+            # --- NEW: Process and compress Depth image ---
+            ret_depth = False
+            if depth_frame:
+                # Convert raw depth to numpy array
+                depth_array = np.asanyarray(depth_frame.get_data())
+                # Scale the 16-bit data to 8-bit and apply a heatmap colorizer
+                depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_array, alpha=0.03), cv2.COLORMAP_JET)
+                # Compress to JPEG
+                ret_depth, depth_jpeg = cv2.imencode('.jpg', depth_colormap, [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_qual])
+            
+            # Broadcast everything at once
+            if ret and ret_depth:
+                network_payload = {**frame_data, **ui_data}
+                
                 zmq_socket.send_multipart([
-                    json.dumps(frame_data).encode('utf-8'),
-                    jpeg_buffer.tobytes()
+                    json.dumps(network_payload).encode('utf-8'),
+                    jpeg_buffer.tobytes(),
+                    depth_jpeg.tobytes() # <-- The new 3rd frame
                 ])
 
             if record and writer:
@@ -178,7 +193,6 @@ def run_camera_stream(zmq_context: zmq.Context, record: bool):
     except KeyboardInterrupt:
         log.info("Stopping camera stream...")
     finally:
-        # Safely release hardware and network bindings
         cam.stop()
         zmq_socket.close() 
         if writer: writer.close()
