@@ -1,10 +1,10 @@
 [theme]
-primaryColor = "#0A8491"
+primaryColor = "#BF0000"
 base = "light"
-backgroundColor = "#F4F6F9"
-secondaryBackgroundColor = "#E8EEF2"
-textColor = "#1E293B"
-font = "sans serif"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F4F5"
+textColor = "#242024"
+font = "inter"
 
 [client]
 toolbarMode = "viewer"
@@ -14,8 +14,8 @@ gatherUsageStats = false
 
 [server]
 headless = true 
-runOnSave = false
-address = "localhost"
+runOnSave = true
+address = "0.0.0.0"
 showEmailPrompt = false
 enableCORS = false
 enableXsrfProtection = false

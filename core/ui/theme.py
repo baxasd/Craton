@@ -1,10 +1,7 @@
 import os
 import sys
 import configparser
-
-# =============================================================================
-# GLOBAL COLOR PALETTE & UI CONSTANTS
-# =============================================================================
+import streamlit as st
 
 # ── Anatomy & Global Sides ──
 COLOR_LEFT = "#005FB8"     # Blue (Used for left limbs and Frontal lean)
@@ -30,26 +27,14 @@ COLOR_CENTROID_MAIN = "#00E5FF"              # Cyan line for mass centroid
 COLOR_CENTROID_SHADOW = "black"              # Drop shadow to make the cyan pop
 COLOR_ZERO_LINE = "rgba(255, 255, 255, 0.4)" # Faint white dashed line at 0 m/s
 
-TEXT_DIM = "#888888"                         # Dim gray for text labels
-
-# ── CLEAN UI CONSTANTS ───────────────────────────────────────────────────────
-COLOR_MAIN_BG  = "#FFFFFF"  # Pure white background
-COLOR_TEXT     = "#333333"  # Crisp dark gray text
-
-
-# ─── 1. BULLETPROOF PATH RESOLUTION ───
 if getattr(sys, 'frozen', False):
-    # PyInstaller put everything inside the 'libs' folder!
     ROOT_DIR = os.path.join(sys._MEIPASS)
-    
-    # Safely construct absolute paths
     SETTINGS_PATH = os.path.join('..', ROOT_DIR, 'settings.ini')
 else:
-    # If running from source (core/ui/themes.py), go up two levels to reach root
     _current_dir = os.path.dirname(os.path.abspath(__file__))
     ROOT_DIR = os.path.abspath(os.path.join(_current_dir, '..', '..'))
-    # Safely construct absolute paths
     SETTINGS_PATH = os.path.join(ROOT_DIR, 'settings.ini')
+
 LOGO_PATH = os.path.join(ROOT_DIR, 'assets', 'logo.png')
 ICON_PATH = os.path.join(ROOT_DIR, 'assets', 'icon.ico')
 COMMAND_ICON = os.path.join(ROOT_DIR, 'assets', 'command.ico')

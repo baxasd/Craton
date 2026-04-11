@@ -2,52 +2,92 @@ import streamlit as st
 from core.ui.theme import LOGO_PATH
 
 def render():
-    # Hide the sidebar for a focused, distraction-free hub
+ 
     st.markdown("""<style>[data-testid="stSidebar"] {display: none;}</style>""", unsafe_allow_html=True)
 
-    # ── THE 1-3-1 BENTO LAYOUT ──
-    _, center_col, _ = st.columns([1, 3, 1])
+    _, center_col, _ = st.columns([1, 8, 1])
 
     with center_col:
         
-        st.image(LOGO_PATH, width=150)
-        st.markdown("##### Osteo-Skeletal Tracker Suite")
-        st.caption("Select an analytical module to begin your workflow.")
+        st.image(LOGO_PATH, width=200)
+        st.markdown("<p style='font-weight: bold; color: #666; font-size: 0.9rem; margin-top: -10px; '>The Core of Motion</p>", unsafe_allow_html=True)
 
-        # ── ROW 1 ──
-        r1_c1, r1_c2 = st.columns(2)
-        
-        with r1_c1:
-            with st.container(border=True):
-                st.markdown("### Data Prep")
-                st.caption("Clean, trim, and filter raw kinematics.")
-                if st.button("Launch Module", key="btn_prep", type="primary", width="stretch"):
+        main_col, action_col = st.columns([7, 3], gap="medium")
+
+        with main_col:
+            
+            st.markdown("#### Welcome to Craton Studio")
+            st.markdown("""  
+                A unified workspace for human movement analysis.    
+                Craton integrates 3D skeletal tracking with Radar Micro-Doppler analysis to understand complex gait dynamics. 
+
+                Select a module to begin.
+                """)
+            
+            st.write("")
+            
+            # System Architecture
+            st.markdown("#### System Architecture")
+            hw_col, sw_col = st.columns(2)
+            
+            with hw_col:
+                with st.container(border=True):
+                    st.markdown("**Hardware Sensors**")
+                    st.markdown("""
+                    - **RGB-D Camera:** Intel RealSense D435i
+                    - **mmWave Radar:** TI IWR6843
+                    - **Telemetry:** ZeroMQ (Curve25519)
+                    """)
+            with sw_col:
+                with st.container(border=True):
+                    st.markdown("**Software Stack**")
+                    st.markdown("""
+                    - **Frontend:** Streamlit & PyQt6
+                    - **Kinematics:** MediaPipe 0.10.21
+                    - **DSP Engine:** SciPy & NumPy
+                    """)
+
+            st.write("") # Spacer
+
+            # Tributes / Credits
+            st.markdown("#### Acknowledgements")
+            
+            st.info("""
+            **Institution:** University of Roehampton  
+            **Research Teams:** CEBE, School of Health and Life Sciences   
+            **Advisors:** Jose Peredes, Lisa Haskel  
+            **Development:** Source Code and binary executables can be found here: [GitHub](https://github.com/baxasd/craton).  
+            **License:** This software is open-source and released under the [MIT License](https://opensource.org/licenses/MIT).   
+            *Developed in partial fulfillment of the requirements for the Bachelor of Science in Computer Science.*   
+            """)
+
+
+        with action_col:
+            st.markdown("#### Modules")
+            with st.container(border=True, gap='xsmall'):
+                st.markdown("##### Data Prep")
+                st.caption("Clean, trim, and filter raw datasets.")
+                if st.button("Launch", key="btn_prep", type="primary", use_container_width=True):
                     st.session_state.current_page = "prep"
                     st.rerun()
                     
-        with r1_c2:
-            with st.container(border=True):
-                st.markdown("### Gait Analysis")
-                st.caption("Calculate posture metrics and export results.")
-                if st.button("Launch Module", key="btn_gait", type="primary", width="stretch"):
+            with st.container(border=True, gap='xsmall'):
+                st.markdown("##### Gait Analysis")
+                st.caption("Calculate posture metrics and export.")
+                if st.button("Launch", key="btn_gait", type="primary", use_container_width=True):
                     st.session_state.current_page = "analysis"
                     st.rerun()
 
-        # ── ROW 2 ──
-        r2_c1, r2_c2 = st.columns(2)
-        
-        with r2_c1:
-            with st.container(border=True):
-                st.markdown("### Motion Lab")
-                st.caption("View captured skeleton")
-                if st.button("Launch Module", key="btn_viz", type="primary", width="stretch"):
+            with st.container(border=True, gap='xsmall'):
+                st.markdown("##### Motion Lab")
+                st.caption("View captured motion and 2D tracking.")
+                if st.button("Launch", key="btn_viz", type="primary", use_container_width=True):
                     st.session_state.current_page = "viz"
                     st.rerun()
 
-        with r2_c2:
-            with st.container(border=True):
-                st.markdown("### Spectrogram Analysis")
-                st.caption("Generate Micro-Doppler spectrograms.")
-                if st.button("Launch Module", key="btn_radar", type="primary", width="stretch"):
+            with st.container(border=True, gap='xsmall'):
+                st.markdown("##### Radar Analysis")
+                st.caption("Analyze micro-Doppler spectrograms.")
+                if st.button("Launch", key="btn_radar", type="primary", use_container_width=True):
                     st.session_state.current_page = "radar"
                     st.rerun()
