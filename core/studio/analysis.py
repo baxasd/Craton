@@ -2,14 +2,14 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-
+import time
 from core.io import structs
 from core.math import kinematics
 from core.ui.theme import COLOR_LEFT, COLOR_RIGHT
 
-@st.cache_data
+# Perform Calculations and Grouping
+@st.cache_data(show_spinner=False)
 def process_analysis_data(df_raw):
-    """Replicates the heavy math pipeline."""
     session = structs.df_to_session(df_raw)
     ts_df, _ = kinematics.generate_analysis_report(session)
     
@@ -37,8 +37,8 @@ def process_analysis_data(df_raw):
 
     return ts_df, df_per_sec, df_per_min, stats_df
 
+# Creates Plotly plots
 def create_kinematic_plot(df, x_col, y_cols, names, colors, title, show_env=False):
-    """Generates a Plotly chart with optional SD Variance Envelopes."""
     fig = go.Figure()
     window_size = max(1, len(df)//20) if show_env else 1
 
@@ -65,49 +65,93 @@ def create_kinematic_plot(df, x_col, y_cols, names, colors, title, show_env=Fals
     )
     return fig
 
+# Main UI Logic
 def render():
-    st.title("Gait Analysis")
-
-    with st.sidebar:
-        st.title("Controls")
-        analysis_file = st.file_uploader("Select File", type=['csv', 'parquet'], key="analysis_uploader")
-        
-        df_analysis_raw = None
-        if analysis_file is not None:
-            if analysis_file.name.endswith('.parquet'): df_analysis_raw = pd.read_parquet(analysis_file)
-            else: df_analysis_raw = pd.read_csv(analysis_file)
+    # Title and Navigation
+    st.write("")
+    if st.button("← Back to Hub", type="tertiary"):
+        st.session_state.current_page = "hub"
+        st.rerun()
+    st.markdown("<h2 style='margin-top: -15px;'>Gait Analysis</h2>", unsafe_allow_html=True)
     
-        st.subheader("Resampling")
-        grouping = st.selectbox("Choose an option:", ["Frames", "Seconds", "Minutes"], index=1)
-        show_env = st.checkbox("Show Variance Envelopes", value=True)
+    if st.session_state.get('analysis_raw_df') is None:
+
+        # Remove Sidebar if file is uploaded
+        st.markdown("""<style>[data-testid="stSidebar"] {display: none;}</style>""", unsafe_allow_html=True)
         
-        st.subheader("Export")
-        if df_analysis_raw is not None:
+        # Main Layout for Upload file Container
+        _, center_col, _ = st.columns([1, 2, 1])
+        
+        # File Uploader Definition
+        with center_col:
+            with st.container(border=True):
+                st.markdown("<h3 style='text-align: center;'>Import Cleaned Dataset</h3>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #666;'>Upload a preprocessed file to generate the analysis report.</p>", unsafe_allow_html=True)
+                
+                analysis_file = st.file_uploader("Upload File", type=['csv', 'parquet'], label_visibility="collapsed")
+                
+                if analysis_file is not None:
+                    with st.spinner("Loading the dataset..."):
+                        if analysis_file.name.endswith('.parquet'): 
+                            st.info("Parquet file detected. Preparing tools…")
+                            time.sleep(2)
+                            st.session_state.analysis_raw_df = pd.read_parquet(analysis_file)
+                        else: 
+                            st.info("CSV file detected. Preparing tools…")
+                            time.sleep(2)
+                            st.session_state.analysis_raw_df = pd.read_csv(analysis_file)
+                        st.rerun()
+
+    # Shows up only when Data is Loaded
+    else:
+        # Fetch the loaded data
+        df_analysis_raw = st.session_state.analysis_raw_df
+
+        # Wrapped with spinner to prevent exposing function names
+        with st.spinner("Running calculations..."):
             ts_df, df_per_sec, df_per_min, stats_df = process_analysis_data(df_analysis_raw)
+
+        # Sidebar configs
+        with st.sidebar:
+            st.markdown("### Visualization Controls")
+            grouping = st.selectbox("Resolution:", ["Frames", "Seconds", "Minutes"], index=1)
+            show_env = st.checkbox("Show Variance Envelopes", value=True)
             
+            st.divider()
+
+            # Export Section
+            st.markdown("### Export Reports")
             export_df = ts_df if "Frames" in grouping else (df_per_sec if "Seconds" in grouping else df_per_min)
+            
+            # Download Grouped Data
             st.download_button(
-                label=f"Download Timeline Data - {grouping.split(' ')[0]}",
+                label=f"Download Aggregated Data",
                 data=export_df.to_csv(index=False).encode('utf-8'),
                 file_name=f"timeseries_{grouping.split(' ')[0].lower()}.csv",
-                mime='text/csv', width='stretch'
+                mime='text/csv', width='stretch', type='primary'
             )
             
+            # Downloads Summary
             st.download_button(
                 label="Download Summary",
                 data=stats_df.to_csv(index=True).encode('utf-8'),
                 file_name="summary.csv",
-                mime='text/csv', width='stretch'
+                mime='text/csv', width='stretch', type='primary'
             )
-        st.markdown("---")
-        if st.button("Back to Menu", width='stretch'):
-            st.session_state.current_page = "hub"
-            st.rerun()
+            
+            st.divider()
+            
+            # Clears current uploaded file
+            if st.button("Clear Workspace", width='stretch'):
+                st.session_state.analysis_raw_df = None
+                st.rerun()
 
-    if df_analysis_raw is not None:
-        with st.expander("Metrics Summary", expanded=True):
-            st.dataframe(stats_df.style.format("{:.2f}"), width="stretch", height=250)
+        # Main View after Data is Loaded
+        with st.container(border=True):
+            st.markdown("##### View Metrics Data Table")
+            st.dataframe(stats_df.style.format("{:.2f}"), width='stretch', height=250)
 
+        # Determine plotting dataframe based on grouping
         if "Frames" in grouping:
             plot_df = ts_df.copy()
             x_col = "frame"
@@ -119,23 +163,22 @@ def render():
             plot_df = df_per_min
             x_col = "time_min"
 
-        # UI THEME CONSTANTS APPLIED HERE
+        # Trunk Lean
         with st.container(border=True):
             fig_lean = create_kinematic_plot(plot_df, x_col, ['lean_x', 'lean_z'], ["Sagittal (X)", "Frontal (Z)"], [COLOR_RIGHT, COLOR_LEFT], "1. Trunk Lean Dynamics", show_env)
-            st.plotly_chart(fig_lean, width="stretch")
+            st.plotly_chart(fig_lean, width='stretch')
 
+        # Charts 2-5: The 2x2 Grid
         plots_config = [
-            ("2. Knee Flexion", ['l_knee', 'r_knee'], ["Left Knee", "Right Knee"]),
-            ("3. Hip Flexion", ['l_hip', 'r_hip'], ["Left Hip", "Right Hip"]),
-            ("4. Shoulder Swing", ['l_sho', 'r_sho'], ["Left Shoulder", "Right Shoulder"]),
-            ("5. Elbow Flexion", ['l_elb', 'r_elb'], ["Left Elbow", "Right Elbow"])
-        ]
+            ("Knee Flexion", ['l_knee', 'r_knee'], ["Left Knee", "Right Knee"]),
+            ("Hip Flexion", ['l_hip', 'r_hip'], ["Left Hip", "Right Hip"]),
+            ("Shoulder Swing", ['l_sho', 'r_sho'], ["Left Shoulder", "Right Shoulder"]),
+            ("Elbow Flexion", ['l_elb', 'r_elb'], ["Left Elbow", "Right Elbow"])]
         
+        # Chart Implementations
         cols = st.columns(2)
         for i, (title, y_cols, names) in enumerate(plots_config):
             with cols[i % 2]:
                 with st.container(border=True):
                     fig = create_kinematic_plot(plot_df, x_col, y_cols, names, [COLOR_LEFT, COLOR_RIGHT], title, show_env)
-                    st.plotly_chart(fig, width="stretch")
-    else:
-        st.info("Upload preprocessed dataset to run the analysis.")
+                    st.plotly_chart(fig,  width='stretch')

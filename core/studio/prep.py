@@ -41,7 +41,7 @@ def render():
                             time.sleep(2)
                             st.session_state.raw_df = pd.read_parquet(uploaded_file)
                         else:
-                            st.info("Parquet file detected. Preparing tools…")
+                            st.info("CSV file detected. Preparing tools…")
                             time.sleep(2)
                             st.session_state.raw_df = pd.read_csv(uploaded_file)
                         
