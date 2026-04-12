@@ -140,7 +140,7 @@ def render():
             )
             
             st.divider()
-            
+
             # Clears current uploaded file
             if st.button("Clear Workspace", width='stretch'):
                 st.session_state.analysis_raw_df = None
@@ -165,7 +165,7 @@ def render():
 
         # Trunk Lean
         with st.container(border=True):
-            fig_lean = create_kinematic_plot(plot_df, x_col, ['lean_x', 'lean_z'], ["Sagittal (X)", "Frontal (Z)"], [COLOR_RIGHT, COLOR_LEFT], "1. Trunk Lean Dynamics", show_env)
+            fig_lean = create_kinematic_plot(plot_df, x_col, ['lean_x', 'lean_z'], ["Sagittal", "Frontal"], [COLOR_RIGHT, COLOR_LEFT], "Trunk Lean Dynamics", show_env)
             st.plotly_chart(fig_lean, width='stretch')
 
         # Charts 2-5: The 2x2 Grid
