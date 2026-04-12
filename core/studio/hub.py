@@ -2,16 +2,20 @@ import streamlit as st
 from core.ui.theme import LOGO_PATH
 
 def render():
- 
+     
+    # Hide Sidebar in the Hub
     st.markdown("""<style>[data-testid="stSidebar"] {display: none;}</style>""", unsafe_allow_html=True)
 
+    # Main layout
     _, center_col, _ = st.columns([1, 8, 1])
 
     with center_col:
         
+        # Logo and Tagline
         st.image(LOGO_PATH, width=200)
         st.markdown("<p style='font-weight: bold; color: #666; font-size: 0.9rem; margin-top: -10px; '>The Core of Motion</p>", unsafe_allow_html=True)
 
+        # Layout inside the card
         main_col, action_col = st.columns([7, 3], gap="medium")
 
         with main_col:
@@ -26,7 +30,7 @@ def render():
             
             st.write("")
             
-            # System Architecture
+            # System Architecture section
             st.markdown("#### System Architecture")
             hw_col, sw_col = st.columns(2)
             
@@ -47,9 +51,9 @@ def render():
                     - **DSP Engine:** SciPy & NumPy
                     """)
 
-            st.write("") # Spacer
+            st.write("")
 
-            # Tributes / Credits
+            # Credits Section
             st.markdown("#### Acknowledgements")
             
             st.info("""
@@ -61,33 +65,38 @@ def render():
             *Developed in partial fulfillment of the requirements for the Bachelor of Science in Computer Science.*   
             """)
 
-
+        # Individual Modules Containers
         with action_col:
             st.markdown("#### Modules")
+            
+            # Preprocessing
             with st.container(border=True, gap='xsmall'):
                 st.markdown("##### Data Prep")
                 st.caption("Clean, trim, and filter raw datasets.")
-                if st.button("Launch", key="btn_prep", type="primary", use_container_width=True):
+                if st.button("Launch", key="btn_prep", type="primary", width='stretch'):
                     st.session_state.current_page = "prep"
                     st.rerun()
-                    
+                
+            # Analysis
             with st.container(border=True, gap='xsmall'):
                 st.markdown("##### Gait Analysis")
                 st.caption("Calculate posture metrics and export.")
-                if st.button("Launch", key="btn_gait", type="primary", use_container_width=True):
+                if st.button("Launch", key="btn_gait", type="primary", width='stretch'):
                     st.session_state.current_page = "analysis"
                     st.rerun()
 
+            # Visualization
             with st.container(border=True, gap='xsmall'):
                 st.markdown("##### Motion Lab")
                 st.caption("View captured motion and 2D tracking.")
-                if st.button("Launch", key="btn_viz", type="primary", use_container_width=True):
+                if st.button("Launch", key="btn_viz", type="primary", width='stretch'):
                     st.session_state.current_page = "viz"
                     st.rerun()
 
+            # mmWave analysis
             with st.container(border=True, gap='xsmall'):
                 st.markdown("##### Radar Analysis")
                 st.caption("Analyze micro-Doppler spectrograms.")
-                if st.button("Launch", key="btn_radar", type="primary", use_container_width=True):
+                if st.button("Launch", key="btn_radar", type="primary", width='stretch'):
                     st.session_state.current_page = "radar"
                     st.rerun()
