@@ -9,20 +9,18 @@ from core.radar.parser import RadarConfig
 # Setup clean logging
 log = logging.getLogger("RadarMath")
 
-# ── 1. Digital Filters ───────────────────────────────────────────────────────
-
+# Digital Filters
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=4):
     """
     Applies a Butterworth bandpass filter to a 1D signal.
     Used to isolate human step frequencies and ignore high-frequency noise 
     or slow, gradual body shifts.
     """
-    nyq = 0.5 * fs # Nyquist frequency is half the sampling rate
+    nyq = 0.5 * fs
     b, a = butter(order, [lowcut / nyq, highcut / nyq], btype='band')
     return filtfilt(b, a, data)
 
-# ── 2. The Data Session ──────────────────────────────────────────────────────
-
+# The Data Session 
 class RecordingSession:
     """
     Loads raw radar bytes from disk, structures them based on the TI hardware
@@ -33,8 +31,6 @@ class RecordingSession:
         self.cfg = cfg
         self.frames: list[np.ndarray] = []
         self.timestamps: list[float] = []
-        
-        # Automatically load the data into RAM on instantiation
         self._load()
 
     def _load(self):
@@ -42,20 +38,14 @@ class RecordingSession:
         table = pq.read_table(self.filepath)
         df = table.to_pandas()
         
-        # Calculate exactly how many values should be in a single radar frame
         exp = self.cfg.numRangeBins * self.cfg.numLoops
-        
-        # Bypassing pandas iterrows() entirely by converting columns to native Python lists. 
-        # This runs roughly 50x faster than standard Pandas iteration.
         byte_list = df['rdhm_bytes'].to_list()
         timestamp_list = df['timestamp'].to_list()
         
         for raw_bytes, ts in zip(byte_list, timestamp_list):
             raw = np.frombuffer(raw_bytes, dtype=np.uint16)
             
-            # Drop corrupted packets where the network dropped bytes
-            if raw.size != exp: continue
-                
+            if raw.size != exp: continue    
             mat = raw.astype(np.float32).reshape(self.cfg.numRangeBins, self.cfg.numLoops)
             self.frames.append(mat)
             self.timestamps.append(float(ts))
@@ -68,8 +58,7 @@ class RecordingSession:
     def duration_s(self):
         return (self.timestamps[-1] - self.timestamps[0]) if len(self.timestamps) > 1 else 0.0
 
-    # ── 3. The DSP Engine ────────────────────────────────────────────────────
-
+    # The DSP Engine
     def build_spectrogram(self, gate_lo_m: float, gate_hi_m: float, smooth_t: int = 2):
         """
         Converts the 3D Radar Data (Time, Range, Velocity) into 
@@ -78,66 +67,40 @@ class RecordingSession:
         cfg = self.cfg
         nv = cfg.numLoops
         
-        # Convert the user's requested meters into strict array indices (Range Gating)
         lo_bin = max(0, int(gate_lo_m / cfg.rangeRes))
         hi_bin = min(cfg.numRangeBins, max(lo_bin + 1, int(gate_hi_m / cfg.rangeRes)))
 
         v_axis_coarse = np.linspace(-cfg.dopMax, cfg.dopMax, nv, dtype=np.float32)
-
-        # OPTIMIZATION: 3D Matrix Vectorization. 
-        # Instead of looping through thousands of frames one by one, we stack them 
-        # into a single 3D cube and perform the math on the entire cube instantly in C.
-        frames_3d = np.array(self.frames) # Shape: (Time, Range, Velocity)
+        frames_3d = np.array(self.frames)
         
-        # 1. Slice the ranges we care about, then collapse the Range axis by taking the max signal
         sl_3d = frames_3d[:, lo_bin:hi_bin, :].max(axis=1) # Shape becomes: (Time, Velocity)
-        
-        # 2. Shift the FFT so 0 m/s is in the exact center of the matrix
         spec_lin = np.abs(np.fft.fftshift(sl_3d, axes=1))
 
-        # Centroid extraction (Calculates the power-weighted average velocity of the runner)
         noise_lin = np.percentile(spec_lin, 30, axis=1, keepdims=True)
         weights = np.maximum(spec_lin - noise_lin, 0.0)
         w_sum = weights.sum(axis=1)
-        
-        # Prevent divide-by-zero errors if a frame is completely silent
         centroid = np.where(w_sum > 1e-9, (weights * v_axis_coarse[np.newaxis, :]).sum(axis=1) / w_sum, 0.0).astype(np.float32)
-
-        # Convert the linear radar amplitudes into Logarithmic Decibels (dB) for human viewing
         spec_db = 20.0 * np.log10(spec_lin + 1e-9)
-        
-        # Clutter Mitigation: The center bins represent exactly 0 m/s velocity. 
-        # This is stationary clutter (walls, the treadmill itself). 
-        # We cap the brightness of the center bins so they don't blind the heatmap.
         center_idx = nv // 2
         moving_bins_db = np.delete(spec_db, [center_idx-1, center_idx, center_idx+1], axis=1)
         clutter_ceiling = np.percentile(moving_bins_db, 99.0)
         spec_db[:, center_idx-1:center_idx+2] = np.clip(spec_db[:, center_idx-1:center_idx+2], a_min=None, a_max=clutter_ceiling)
-
-        # Time Smoothing: Blurs the image slightly along the Time axis to remove micro-jitters
         if smooth_t > 1:
             spec_db = ndimage.uniform_filter1d(spec_db, size=smooth_t, axis=0)
-
-        # Upsampling: Radars usually only have 32 or 64 velocity bins. 
-        # We use bilinear interpolation to stretch it to 256/512 bins so it doesn't look blocky.
         zoom_factor = 8
         spec_db = ndimage.zoom(spec_db, (1, zoom_factor), order=3)
         v_axis_highres = np.linspace(-cfg.dopMax, cfg.dopMax, nv * zoom_factor, dtype=np.float32)
-
-        # Normalize the timestamps so the recording starts exactly at 0.0s
         t0 = self.timestamps[0]
         t_axis = np.array([t - t0 for t in self.timestamps], dtype=np.float32)
 
         return spec_db, t_axis, v_axis_highres, centroid
 
-# ── 4. Gait Extraction ───────────────────────────────────────────────────────
-
+# Gait Extraction
 def extract_gait_metrics(spec: np.ndarray, t_axis: np.ndarray, v_axis: np.ndarray) -> tuple[float, float, float]:
     """
     Analyzes the Micro-Doppler signature to automatically detect the runner's Cadence (SPM)
     and their physical velocity.
     """
-    # 1. Base Velocity Metrics
     profile = spec.mean(axis=0)
     noise_floor = float(np.percentile(profile, 20))
     weights = np.maximum(profile - noise_floor, 0)
@@ -146,31 +109,22 @@ def extract_gait_metrics(spec: np.ndarray, t_axis: np.ndarray, v_axis: np.ndarra
     mean_abs = float((weights * np.abs(v_axis)).sum() / w_sum) if w_sum > 0 else 0.0
     peak_v = float(v_axis[int(np.argmax(profile))])
 
-    # 2. Cadence (Steps-Per-Minute) Estimation
     spm = 0.0
     if len(t_axis) > 20:
         fps_est = len(t_axis) / float(t_axis[-1])
         nv = spec.shape[1]
         center_idx = nv // 2
         
-        # We completely ignore the center stationary bins. We only want the kinetic 
-        # energy of the runner's limbs swinging forward and backward.
         moving_bins = list(range(0, center_idx-2)) + list(range(center_idx+3, nv))
         movement = np.sum(spec[:, moving_bins], axis=1)
         
-        # Clean the 1D movement wave
         movement = np.clip(movement, a_min=None, a_max=np.percentile(movement, 99.5))
         movement = (movement - np.mean(movement)) / (np.std(movement) + 1e-6)
         
         try:
-            # Human running/walking cadence usually falls strictly between 1.0Hz (60 SPM) and 4.0Hz (240 SPM).
-            # The bandpass filter aggressively deletes any data outside this human range.
             filtered_sig = butter_bandpass_filter(movement, 1.0, 4.0, fps_est)
-            
-            # Find the peaks in the wave (each peak is a foot striking the ground)
             peaks, _ = find_peaks(filtered_sig, distance=int(fps_est / 4.0), prominence=0.4)
             
-            # Convert raw footfalls into SPM
             total_steps = len(peaks)
             duration_min = float(t_axis[-1]) / 60.0
             if duration_min > 0:

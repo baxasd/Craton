@@ -1,15 +1,14 @@
 import streamlit as st
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 import tempfile
 import os
 import configparser
-
 from core.radar.parser import RadarConfig
 from core.radar.dsp import RecordingSession, extract_gait_metrics
 from core.ui.theme import COLOR_RADAR_BG, COLOR_CENTROID_MAIN, COLOR_CENTROID_SHADOW, COLOR_ZERO_LINE, SETTINGS_PATH
 
-# ─── CACHED FFT DSP ENGINE ───────────────────────────────────────────────────
 @st.cache_data(show_spinner=False)
 def process_radar_data(file_bytes, range_lo, range_hi, smooth_window):
     """
@@ -45,76 +44,77 @@ def process_radar_data(file_bytes, range_lo, range_hi, smooth_window):
 
 def render():
     
-    st.title("Radar Spectrogram Analysis")
+    st.write("")
+    if st.button("← Back to Hub", type="tertiary"):
+        st.session_state.current_page = "hub"
+        st.rerun()
+        
+    st.markdown("<h2 style='margin-top: -15px;'>Radar Analysis</h2>", unsafe_allow_html=True)
 
-    with st.sidebar:
-        st.markdown("# Controls")
+    if st.session_state.get('radar_bytes') is None:
+    
+        st.markdown("""<style>[data-testid="stSidebar"] {display: none;}</style>""", unsafe_allow_html=True)
         
-        uploaded_file = st.file_uploader("Select File", type=['parquet'], key="radar_up")
+        _, center_col, _ = st.columns([1, 2, 1])
         
-        st.subheader("Range Gate")
-        col_lo, col_hi = st.columns(2)
-        range_lo = col_lo.number_input("Min Range", min_value=0.0, max_value=49.0, value=0.0, step=0.1)
-        range_hi = col_hi.number_input("Max Range", min_value=0.1, max_value=50.0, value=5.0, step=0.1)
-        
-        st.subheader("Visuals")
-        
-        cmap_mapping = {'Jet': 'Jet', 'Inferno': 'Inferno', 'Plasma': 'Plasma'}
-        cmap_sel = st.selectbox("Colormap:", list(cmap_mapping.keys()), index=0)
-        plotly_cmap = cmap_mapping[cmap_sel]
-        
-        cont_lo, cont_hi = st.slider("Contrast Percentiles:", min_value=0.0, max_value=100.0, value=(40.0, 99.5), step=0.5)
-        smooth_win = st.number_input("Smoothing Window:", min_value=1, max_value=10, value=3, step=1)
-        show_centroid = st.checkbox("Overlay Cadence Line", value=True)
-        
-        st.markdown("---")
-        
-        if st.button("Back to Menu", width='stretch'):
-            st.session_state.current_page = "hub"
-            st.rerun()
+        with center_col:
+            with st.container(border=True):
+                st.markdown("<h3 style='text-align: center;'>Import Radar Session</h3>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #666;'>Upload raw mmWave telemetry to generate the Micro-Doppler spectrogram.</p>", unsafe_allow_html=True)
+                
+                radar_file = st.file_uploader("Upload File", type=['parquet'], label_visibility="collapsed")
+                
+                if radar_file is not None:
+                    st.session_state.radar_bytes = radar_file.getvalue()
+                    st.rerun()
 
-    if uploaded_file is not None:
-        with st.spinner("Crunching Micro-Doppler FFTs..."):
+    else:
+        file_bytes = st.session_state.radar_bytes
+
+        with st.sidebar:
+            st.markdown("### Range Filter")
+            col_lo, col_hi = st.columns(2)
+            range_lo = col_lo.number_input("Min Range", min_value=0.0, max_value=49.0, value=0.0, step=0.1)
+            range_hi = col_hi.number_input("Max Range", min_value=0.1, max_value=50.0, value=5.0, step=0.1)
             
+            st.markdown("### Visual Overlays")
+            cmap_mapping = {'Jet': 'Jet', 'Inferno': 'Inferno', 'Plasma': 'Plasma'}
+            cmap_sel = st.selectbox("Colormap:", list(cmap_mapping.keys()), index=0)
+            plotly_cmap = cmap_mapping[cmap_sel]
+            
+            cont_lo, cont_hi = st.slider("Contrast Percentiles:", min_value=0.0, max_value=100.0, value=(40.0, 99.5), step=0.5)
+            smooth_win = st.number_input("DSP Smoothing Window:", min_value=1, max_value=10, value=3, step=1)
+            show_centroid = st.checkbox("Overlay Cadence Line", value=True)
+            
+            st.divider()
+
+            if st.button("Clear Workspace", use_container_width=True):
+                st.session_state.radar_bytes = None
+                st.rerun()
+
+        with st.spinner("Crunching Micro-Doppler FFTs..."):
             spec, t_axis, v_axis, centroid, peak_v, mean_abs, spm, dur, frames, fps, res = process_radar_data(
-                uploaded_file.getvalue(), range_lo, range_hi, int(smooth_win)
+                file_bytes, range_lo, range_hi, int(smooth_win)
             )
 
-        # ─── 1. METRICS SECTION (MOVED TO TOP) ───
-        st.subheader("Session Statistics")
-        st.caption("Aggregated gait and motion metrics.")
-        
         with st.container(border=True):
-            st.markdown("**Core Metrics**")
-            
+            st.markdown("Session Statistics")
             cadence_str = f"{spm:.0f}" if spm > 0 else "--"
-            metrics_data = [
-                ("Cadence", f"{cadence_str} SPM"),
-                ("Peak Vel", f"{peak_v:+.2f} m/s"),
-                ("Mean |Vel|", f"{mean_abs:.2f} m/s"),
-                ("Duration", f"{dur:.1f} s"),
-                ("FPS", f"{fps:.1f}"),
-                ("Total Frames", f"{int(frames)}")
-            ]
             
-            html_block = ""
-            for label, val_str in metrics_data:
-                html_block += f"""
-                <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(128, 128, 128, 0.2);">
-                    <span>{label}</span>
-                    <strong>{val_str}</strong>
-                </div>
-                """
+            stats_dict = {
+                "Cadence (SPM)": cadence_str,
+                "Peak Vel (m/s)": f"{peak_v:+.2f}",
+                "Mean |Vel| (m/s)": f"{mean_abs:.2f}",
+                "Duration (s)": f"{dur:.1f}",
+                "FPS": f"{fps:.1f}",
+                "Frames": f"{int(frames)}"
+            }
             
-            st.markdown(html_block, unsafe_allow_html=True)
+            st.dataframe(pd.DataFrame([stats_dict]), hide_index=True, width='stretch')
 
-        st.write("") # Quick spacer
-
-        # ─── 2. SPECTROGRAM SECTION (MOVED BELOW) ───
-        st.subheader("Micro-Doppler Spectrogram")
-        st.caption("Time-velocity distribution of the target.")
-        
         with st.container(border=True):
+            st.markdown("##### Micro-Doppler Spectrogram")
+            
             sub_spec = spec[::4, ::4]
             z_min = float(np.percentile(sub_spec, cont_lo))
             z_max = float(np.percentile(sub_spec, cont_hi))
@@ -140,12 +140,9 @@ def render():
                 xaxis_title="Time (Seconds)",
                 yaxis_title="Doppler Velocity (m/s)",
                 height=600,
-                margin=dict(l=0, r=0, t=10, b=0),
+                margin=dict(l=0, r=0, t=20, b=0),
                 plot_bgcolor=COLOR_RADAR_BG,
                 paper_bgcolor='rgba(0,0,0,0)'
             )
 
-            st.plotly_chart(fig, width="stretch")
-            
-    else:
-        st.info("Upload a dataset to generate spectrogram.")
+            st.plotly_chart(fig, width='stretch')

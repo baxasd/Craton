@@ -15,11 +15,9 @@ def open_browser():
 
 if __name__ == "__main__":
     
-    # Handle PyInstaller pathing if compiled into an executable
     if getattr(sys, 'frozen', False):
         application_path = sys._MEIPASS
         os.chdir(application_path)
-
 
     console.print(f"\n[bold]Craton Studio[/bold]")
     with console.status("[dim]Launching Craton Studio server...[/dim]", spinner="dots"):
@@ -29,7 +27,7 @@ if __name__ == "__main__":
             "streamlit", 
             "run", 
             "core/studio/studio.py", 
-         #   "--global.developmentMode=false", 
+            "--global.developmentMode=false", 
             "--logger.level=error"
         ]        
         time.sleep(2)

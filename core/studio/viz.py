@@ -8,7 +8,6 @@ from core.io.structs import BONES_LIST, VISIBLE_NAMES
 from core.math import kinematics
 from core.ui.theme import COLOR_LEFT, COLOR_RIGHT, COLOR_CENTER, COLOR_JOINT, COLOR_SKELETON_BG, COLOR_REF_LINE, VIZ_BONE_WIDTH, VIZ_SPINE_WIDTH
 
-
 @st.cache_data(show_spinner=False)
 def load_session_for_viz(file_bytes, filename):
     """Loads the file directly from RAM into a hierarchical Session object."""
@@ -21,27 +20,23 @@ def draw_2d_skeleton(frame):
     """Hardware-accelerated 2D projection of the 3D skeleton."""
     fig = go.Figure()
     
-    # ── DRAW BONES ──
     for (n1, n2) in BONES_LIST:
         p1 = kinematics.get_point(frame, n1)
         p2 = kinematics.get_point(frame, n2)
         
         if p1 and p2:
-            # UI THEME CONSTANTS APPLIED HERE
             c = COLOR_CENTER 
             if "left" in n1 or "left" in n2: c = COLOR_LEFT 
             elif "right" in n1 or "right" in n2: c = COLOR_RIGHT 
             
-            # Switch to thicker spine width if dealing with the trunk
             w = VIZ_SPINE_WIDTH if "mid" in n1 and "mid" in n2 else VIZ_BONE_WIDTH
 
             fig.add_trace(go.Scatter(
                 x=[p1[0], p2[0]], 
-                y=[-p1[1], -p2[1]], # Y-Axis Inversion
+                y=[-p1[1], -p2[1]],
                 mode='lines', line=dict(color=c, width=w), hoverinfo='skip', showlegend=False
             ))
 
-    # ── DRAW JOINTS ──
     xs, ys, names = [], [], []
     for name in VISIBLE_NAMES:
         p = kinematics.get_point(frame, name) 
@@ -72,72 +67,74 @@ def draw_2d_skeleton(frame):
     return fig
 
 def render():
-
-    st.title("Motion Lab")
-
-    with st.sidebar:
-        st.markdown("# Controls")
-        uploaded_file = st.file_uploader("Select File (.parquet or .csv)", type=['parquet', 'csv'], key="viz_up")
+    
+    st.write("")
+    if st.button("← Back to Hub", type="tertiary"):
+        st.session_state.current_page = "hub"
+        st.rerun()
         
-        session = None
-        if uploaded_file is not None:
-            with st.spinner("Loading frames into memory..."):
-                session = load_session_for_viz(uploaded_file.getvalue(), uploaded_file.name)
+    st.markdown("<h2 style='margin-top: -15px;'>Motion Lab</h2>", unsafe_allow_html=True)
+
+    if st.session_state.get('viz_bytes') is None:
+        
+        st.markdown("""<style>[data-testid="stSidebar"] {display: none;}</style>""", unsafe_allow_html=True)
+        
+        _, center_col, _ = st.columns([1, 2, 1])
+        
+        with center_col:
+            with st.container(border=True):
+                st.markdown("<h3 style='text-align: center;'>Import Motion Data</h3>", unsafe_allow_html=True)
+                st.markdown("<p style='text-align: center; color: #666;'>Upload cleaned motion data to visualize skeletal tracking.</p>", unsafe_allow_html=True)
+                
+                viz_file = st.file_uploader("Upload File (.parquet or .csv)", type=['parquet', 'csv'], label_visibility="collapsed")
+                
+                if viz_file is not None:
+                    st.session_state.viz_bytes = viz_file.getvalue()
+                    st.session_state.viz_filename = viz_file.name
+                    st.rerun()
+
+    else:
+        file_bytes = st.session_state.viz_bytes
+        filename = st.session_state.viz_filename
+        
+        with st.spinner("Loading frames into memory..."):
+            session = load_session_for_viz(file_bytes, filename)
+        
+        st.success(f"Loaded {len(session.frames)} frames.")
+
+        with st.sidebar:
+            st.markdown("### Playback Controls")
             
-            st.success(f"Loaded {len(session.frames)} frames.")
-            st.subheader("Frames")
             max_f = len(session.frames) - 1
             frame_idx = st.slider("Select Frame:", min_value=0, max_value=max_f, value=0, step=1)
             
             current_frame = session.frames[frame_idx]
             st.caption(f"**Timestamp:** {current_frame.timestamp:.2f} seconds")
+            
+            st.divider()
+            
+            if st.button("Clear Workspace", width='stretch'):
+                st.session_state.viz_bytes = None
+                st.session_state.viz_filename = None
+                st.rerun()
 
-        st.markdown("---")
-        if st.button("Back to Menu", width='stretch'):
-            st.session_state.current_page = "hub"
-            st.rerun()
-
-    if uploaded_file is not None and session is not None:
-        
-        # ─── 1. METRICS SECTION (MOVED TO TOP) ───
-        st.subheader("Frame Metrics")
-        st.caption("Instantaneous joint angles for the selected frame.")
-        
         vals = kinematics.compute_all_metrics(current_frame)
         
-        metrics_config = [
-            ("Trunk Lean", [("Sagittal (Forward)", 'lean_x'), ("Frontal (Side)", 'lean_z')]),
-            ("Knee Flexion", [("Left Knee", 'l_knee'), ("Right Knee", 'r_knee')]),
-            ("Hip Flexion", [("Left Hip", 'l_hip'), ("Right Hip", 'r_hip')])
-        ]
-        
-        # Display the 3 metric cards side-by-side
-        metric_cols = st.columns(3)
-        for i, (section_title, metrics) in enumerate(metrics_config):
-            with metric_cols[i]:
-                with st.container(border=True):
-                    st.markdown(f"**{section_title}**")
-                    
-                    html_block = ""
-                    for label, key in metrics:
-                        val_str = f"{vals[key]:.1f}&deg;"
-                        html_block += f"""
-                        <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(128, 128, 128, 0.2);">
-                            <span>{label}</span>
-                            <strong>{val_str}</strong>
-                        </div>
-                        """
-                    st.markdown(html_block, unsafe_allow_html=True)
-
-        st.write("") # Quick spacer
-
-        # ─── 2. SKELETON SECTION (MOVED BELOW) ───
-        st.subheader("Skeletal Projection")
-        st.caption("2D tracking visualization.")
-        
         with st.container(border=True):
-            fig = draw_2d_skeleton(current_frame)
-            st.plotly_chart(fig, width="stretch")
+            st.markdown("#### Frame Metrics")
+            metrics_dict = {
+                "Trunk Lean (Sagittal)": f"{vals['lean_x']:.1f}°",
+                "Trunk Lean (Frontal)": f"{vals['lean_z']:.1f}°",
+                "Left Knee Flexion": f"{vals['l_knee']:.1f}°",
+                "Right Knee Flexion": f"{vals['r_knee']:.1f}°",
+                "Left Hip Flexion": f"{vals['l_hip']:.1f}°",
+                "Right Hip Flexion": f"{vals['r_hip']:.1f}°"
+            }
             
-    else:
-        st.info("Upload a dataset to generate motion preview.")
+            st.dataframe(pd.DataFrame([metrics_dict]), hide_index=True, width='stretch')
+
+        with st.container(border=True):
+            st.markdown("##### 2D Projection")
+            fig = draw_2d_skeleton(current_frame)
+            
+            st.plotly_chart(fig, width='stretch')
