@@ -11,11 +11,9 @@ import cv2
 from rich.console import Console
 from rich.prompt import Prompt
 import time
-
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QFrame, QSizePolicy)
 from PyQt6.QtGui import QPixmap, QIcon, QImage, QFont
-
 from core.radar.parser import RadarConfig
 from core.ui.theme import ICON_PATH, SETTINGS_PATH
 
@@ -314,7 +312,7 @@ class LiveViewerWindow(QMainWindow):
             if f"j{p1}_px" in meta and f"j{p2}_px" in meta:
                 pt1 = (int(meta[f"j{p1}_px"]), int(meta[f"j{p1}_py"]))
                 pt2 = (int(meta[f"j{p2}_px"]), int(meta[f"j{p2}_py"]))
-                cv2.line(frame, pt1, pt2, (220, 220, 220), 2, cv2.LINE_AA)
+                cv2.line(frame, pt1, pt2, (220, 220, 220), 5, cv2.LINE_AA)
 
         for i in range(33):
             if f"j{i}_px" in meta and f"j{i}_py" in meta:
