@@ -1,5 +1,5 @@
 import streamlit as st
-from ui_theme import LOGO_PATH
+from src.utils.theme import LOGO_PATH
 
 def render():
      

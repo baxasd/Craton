@@ -9,7 +9,7 @@ ICON =  os.path.join(project_root, 'assets', 'icon.ico')
 COMMAND_ICON = os.path.join(project_root, 'assets', 'command.ico')
 
 MANIFEST = os.path.join(project_root, 'manifest.xml')
-FIX = os.path.join(project_root, 'src', 'ops_fix.py')
+FIX = os.path.join(project_root, 'src', 'utils', 'fix.py')
 block_cipher = None
 
 mp_datas, mp_binaries, mp_hidden = collect_all('mediapipe')
@@ -30,7 +30,7 @@ base_hidden = mp_hidden + rs_hidden + cv_hidden + ['pyarrow.vendored.version', '
 #   BUILD 1: STREAM
 # =============================================================================
 a_stream = Analysis( #type: ignore
-    [os.path.join(project_root, 'src', 'sys_stream.py')],
+    [os.path.join(project_root, 'stream.py')],
     pathex=[project_root, os.path.join(project_root, 'src')],
     datas=shared_datas + mp_datas + rs_datas + cv_datas,
     hiddenimports=base_hidden + ['src', 'mediapipe'],
@@ -63,7 +63,7 @@ exe_stream = EXE( #type: ignore
 #   BUILD 2: VIEW
 # =============================================================================
 a_view = Analysis( #type: ignore
-    [os.path.join(project_root, 'src', 'sys_view.py')],
+    [os.path.join(project_root, 'view.py')],
     pathex=[project_root, os.path.join(project_root, 'src')],
     datas=shared_datas,
     hiddenimports=base_hidden + ['src', 'pyqtgraph'],
@@ -99,7 +99,7 @@ stu_datas = shared_datas + st_datas + [(os.path.join(project_root, '.streamlit')
 stu_hidden = ['src', 'streamlit', 'pandas', 'plotly', 'numpy', 'configparser', 'zmq', 'charset_normalizer'] + st_all_hidden
 
 a_stu = Analysis( #type: ignore
-    [os.path.join(project_root, 'src', 'sys_app.py')],
+    [os.path.join(project_root, 'app.py')],
     pathex=[project_root, os.path.join(project_root, 'src')],
     datas=stu_datas,
     hiddenimports=stu_hidden,
@@ -133,7 +133,7 @@ exe_stu = EXE( #type: ignore
 #   BUILD 4: KEYGEN
 # =============================================================================
 a_keygen = Analysis( #type: ignore
-    [os.path.join(project_root, 'src', 'sys_keys.py')],
+    [os.path.join(project_root, 'keys.py')],
     pathex=[project_root, os.path.join(project_root, 'src')],
     datas=[], # No special data needed for keygen
     hiddenimports=['src', 'configparser'],

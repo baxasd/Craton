@@ -26,7 +26,7 @@ if __name__ == "__main__":
         sys.argv = [
             "streamlit", 
             "run", 
-            "src/stu_main.py", 
+            "src/studio/main.py", 
             "--global.developmentMode=false", 
             "--logger.level=error"
         ]        

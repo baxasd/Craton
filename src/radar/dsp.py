@@ -4,7 +4,7 @@ import pyarrow.parquet as pq
 import scipy.ndimage as ndimage
 from scipy.signal import butter, filtfilt, find_peaks
 
-from rad_parse import RadarConfig
+from src.radar.parse import RadarConfig
 
 # Setup clean logging
 log = logging.getLogger("RadarMath")

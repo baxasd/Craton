@@ -3,10 +3,10 @@ import pandas as pd
 import plotly.graph_objects as go
 import io
 
-import io_types as structs
-from io_types import BONES_LIST, VISIBLE_NAMES
-import math_motion as kinematics
-from ui_theme import COLOR_LEFT, COLOR_RIGHT, COLOR_CENTER, COLOR_JOINT, COLOR_SKELETON_BG, COLOR_REF_LINE, VIZ_BONE_WIDTH, VIZ_SPINE_WIDTH
+from src.data import types as structs
+from src.data.types import BONES_LIST, VISIBLE_NAMES
+from src.maths import motion as kinematics
+from src.utils.theme import COLOR_LEFT, COLOR_RIGHT, COLOR_CENTER, COLOR_JOINT, COLOR_SKELETON_BG, COLOR_REF_LINE, VIZ_BONE_WIDTH, VIZ_SPINE_WIDTH
 
 @st.cache_data(show_spinner=False)
 def load_session_for_viz(file_bytes, filename):

@@ -5,9 +5,9 @@ import plotly.graph_objects as go
 import tempfile
 import os
 import configparser
-from rad_parse import RadarConfig
-from rad_dsp import RecordingSession, extract_gait_metrics
-from ui_theme import COLOR_RADAR_BG, COLOR_CENTROID_MAIN, COLOR_CENTROID_SHADOW, COLOR_ZERO_LINE, SETTINGS_PATH
+from src.radar.parse import RadarConfig
+from src.radar.dsp import RecordingSession, extract_gait_metrics
+from src.utils.theme import COLOR_RADAR_BG, COLOR_CENTROID_MAIN, COLOR_CENTROID_SHADOW, COLOR_ZERO_LINE, SETTINGS_PATH
 
 @st.cache_data(show_spinner=False)
 def process_radar_data(file_bytes, range_lo, range_hi, smooth_window):

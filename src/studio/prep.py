@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import time
-from math_filter import PipelineProcessor
-from ui_theme import COLOR_RAW_DATA, COLOR_CLEAN_DATA, PREP_RAW_WIDTH, PREP_CLEAN_WIDTH
+from src.maths.filter import PipelineProcessor
+from src.utils.theme import COLOR_RAW_DATA, COLOR_CLEAN_DATA, PREP_RAW_WIDTH, PREP_CLEAN_WIDTH
 
 def render():
     st.write('')

@@ -20,7 +20,7 @@ def run():
         settings_file = 'settings.ini'
 
         defaults = {
-            'Hardware': {'radar_cfg_file': 'src/rad_config.cfg', 'cli_port': 'auto', 'data_port': 'auto'},
+            'Hardware': {'radar_cfg_file': 'src/radar/config.cfg', 'cli_port': 'auto', 'data_port': 'auto'},
             'Network': {'zmq_radar_port': '5555', 'zmq_camera_port': '5556'},
             'Recording': {'chunk_size': '50'},
             'Viewer': {'default_ip': '127.0.0.1', 'max_range_m': '5.0', 'cmap': 'inferno', 'low_pct': '40.0', 'high_pct': '99.5', 'smooth_grid_size': '250'},

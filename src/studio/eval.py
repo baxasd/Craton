@@ -3,9 +3,9 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import time
-import io_types as structs
-import math_motion as kinematics
-from ui_theme import COLOR_LEFT, COLOR_RIGHT
+from src.data import types as structs
+from src.maths import motion as kinematics
+from src.utils.theme import COLOR_LEFT, COLOR_RIGHT
 
 # Perform Calculations and Grouping
 @st.cache_data(show_spinner=False)
