@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 # Pulls our central logic that knows how to find joint columns (e.g., 'j0_x')
-from core.io.structs import identify_joint_columns
+from io_types import identify_joint_columns
 
 class PipelineProcessor:
     """

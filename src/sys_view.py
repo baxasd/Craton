@@ -14,8 +14,8 @@ import time
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QFrame, QSizePolicy)
 from PyQt6.QtGui import QPixmap, QIcon, QImage, QFont
-from core.radar.parser import RadarConfig
-from core.ui.theme import ICON_PATH, SETTINGS_PATH
+from rad_parse import RadarConfig
+from ui_theme import ICON_PATH, SETTINGS_PATH
 
 # Initialize console globally (or at the top of your file)
 console = Console()

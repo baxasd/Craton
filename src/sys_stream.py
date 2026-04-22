@@ -8,9 +8,9 @@ import json
 import configparser
 import cv2
 import numpy as np
-from core.radar.parser import parse_standard_frame
-from core.io.storage import CameraSessionWriter, RadarSessionWriter
-from core.ui.theme import SETTINGS_PATH
+from rad_parse import parse_standard_frame
+from io_store import CameraSessionWriter, RadarSessionWriter
+from ui_theme import SETTINGS_PATH
 from rich.console import Console, Group
 from rich.panel import Panel
 from rich.prompt import Prompt
@@ -42,7 +42,7 @@ SERVER_SECRET = config['Security']['server_secret'].encode('ascii')
 
 def connect_radar():
     """Initialize the TI mmWave radar and upload the hardware profile."""
-    from sensors.mmWave import RadarSensor 
+    from hw_radar import RadarSensor 
     
     log.info("Connecting to Texas Instruments hardware...")
     
@@ -112,9 +112,9 @@ def run_camera_stream(zmq_context: zmq.Context, record: bool):
     """Capture RealSense video, run MediaPipe pose estimation, and broadcast."""
     log.info("Initializing RealSense and MediaPipe...")
     
-    from sensors.realsense import RealSenseCamera
-    from core.cv.depth import get_mean_depth, deproject_pixel_to_point
-    from core.cv.pose import PoseEstimator
+    from hw_cam import RealSenseCamera
+    from cv_depth import get_mean_depth, deproject_pixel_to_point
+    from cv_pose import PoseEstimator
     
     cam_w = int(config.get('Camera', 'width', fallback=640))
     cam_h = int(config.get('Camera', 'height', fallback=480))

@@ -3,7 +3,7 @@ import logging
 import serial                        # pyserial: talks to the radar over USB-UART
 from serial.tools import list_ports  # Used by find_ti_ports() to scan connected USB devices
 
-from core.radar.parser import RadarConfig, parse_standard_frame
+from rad_parse import RadarConfig, parse_standard_frame
 
 log = logging.getLogger("RadarHardware")
 

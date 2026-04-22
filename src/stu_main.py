@@ -1,6 +1,6 @@
 import streamlit as st
-from core.ui.theme import LOGO_PATH, APP_VERSION, STUDIO_PASS, ICON_PATH
-from core.studio import hub, prep, analysis, radar, viz
+from ui_theme import LOGO_PATH, APP_VERSION, STUDIO_PASS, ICON_PATH
+import stu_hub as hub, stu_prep as prep, stu_eval as analysis, stu_radar as radar, stu_plot as viz
 
 # Global Page Config
 st.set_page_config(page_title="Craton Studio", page_icon=ICON_PATH, layout="wide", 

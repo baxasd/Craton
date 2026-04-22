@@ -30,7 +30,7 @@ if getattr(sys, 'frozen', False):
     SETTINGS_PATH = os.path.join('..', ROOT_DIR, 'settings.ini')
 else:
     _current_dir = os.path.dirname(os.path.abspath(__file__))
-    ROOT_DIR = os.path.abspath(os.path.join(_current_dir, '..', '..'))
+    ROOT_DIR = os.path.abspath(os.path.join(_current_dir, '..'))
     SETTINGS_PATH = os.path.join(ROOT_DIR, 'settings.ini')
 
 LOGO_PATH = os.path.join(ROOT_DIR, 'assets', 'logo.png')
