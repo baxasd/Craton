@@ -2,14 +2,14 @@ import sys
 import os
 from PyInstaller.utils.hooks import collect_all, copy_metadata
 
-project_root = os.path.abspath(os.path.join(SPECPATH, '..')) #type: ignore
+project_root = os.path.abspath(os.path.join(SPECPATH)) #type: ignore
 sys.path.insert(0, project_root)
 
 ICON =  os.path.join(project_root, 'assets', 'icon.ico')
 COMMAND_ICON = os.path.join(project_root, 'assets', 'command.ico')
 
-MANIFEST = os.path.join(project_root, 'ops', 'manifest.xml')
-FIX = os.path.join(project_root, 'ops', 'dllFix.py')
+MANIFEST = os.path.join(project_root, 'manifest.xml')
+FIX = os.path.join(project_root, 'src', 'utils', 'fix.py')
 block_cipher = None
 
 mp_datas, mp_binaries, mp_hidden = collect_all('mediapipe')
@@ -20,7 +20,7 @@ st_datas = st_all_datas + copy_metadata('plotly')
 
 shared_datas = [
     (os.path.join(project_root, 'assets'), 'assets'),
-    (os.path.join(project_root, 'core'), 'core'),
+    (os.path.join(project_root, 'src'), 'src'),
 ]
 
 base_hidden = mp_hidden + rs_hidden + cv_hidden + ['pyarrow.vendored.version', 'zmq']
@@ -31,9 +31,9 @@ base_hidden = mp_hidden + rs_hidden + cv_hidden + ['pyarrow.vendored.version', '
 # =============================================================================
 a_stream = Analysis( #type: ignore
     [os.path.join(project_root, 'stream.py')],
-    pathex=[project_root],
+    pathex=[project_root, os.path.join(project_root, 'src')],
     datas=shared_datas + mp_datas + rs_datas + cv_datas,
-    hiddenimports=base_hidden + ['sensors', 'mediapipe'],
+    hiddenimports=base_hidden + ['src', 'mediapipe'],
     runtime_hooks=[FIX], 
     excludes=[],
     win_no_prefer_redirects=False,
@@ -64,9 +64,9 @@ exe_stream = EXE( #type: ignore
 # =============================================================================
 a_view = Analysis( #type: ignore
     [os.path.join(project_root, 'view.py')],
-    pathex=[project_root],
+    pathex=[project_root, os.path.join(project_root, 'src')],
     datas=shared_datas,
-    hiddenimports=base_hidden + ['pyqtgraph'],
+    hiddenimports=base_hidden + ['src', 'pyqtgraph'],
     runtime_hooks=[],
     excludes=[],
     win_no_prefer_redirects=False,
@@ -96,11 +96,11 @@ exe_view = EXE( #type: ignore
 #   BUILD 3: STUDIO
 # =============================================================================
 stu_datas = shared_datas + st_datas + [(os.path.join(project_root, '.streamlit'), '.streamlit')]
-stu_hidden = ['streamlit', 'pandas', 'plotly', 'numpy', 'configparser', 'zmq', 'charset_normalizer'] + st_all_hidden
+stu_hidden = ['src', 'streamlit', 'pandas', 'plotly', 'numpy', 'configparser', 'zmq', 'charset_normalizer'] + st_all_hidden
 
 a_stu = Analysis( #type: ignore
-    [os.path.join(project_root, 'launcher.py')],
-    pathex=[project_root],
+    [os.path.join(project_root, 'app.py')],
+    pathex=[project_root, os.path.join(project_root, 'src')],
     datas=stu_datas,
     hiddenimports=stu_hidden,
     runtime_hooks=[],
@@ -130,39 +130,6 @@ exe_stu = EXE( #type: ignore
 
 
 # =============================================================================
-#   BUILD 4: KEYGEN
-# =============================================================================
-a_keygen = Analysis( #type: ignore
-    [os.path.join(project_root, 'keygen.py')],
-    pathex=[project_root],
-    datas=[], # No special data needed for keygen
-    hiddenimports=['configparser'],
-    runtime_hooks=[],
-    excludes=[],
-    win_no_prefer_redirects=False,
-    win_private_assemblies=False,
-    cipher=block_cipher,
-    noarchive=False,
-)
-pyz_keygen = PYZ(a_keygen.pure, a_keygen.zipped_data, cipher=block_cipher) #type: ignore
-
-exe_keygen = EXE( #type: ignore
-    pyz_keygen,
-    a_keygen.scripts,
-    [],
-    exclude_binaries=True,
-    name='Keygen',
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=True,
-    console=True,
-    icon=COMMAND_ICON,
-    manifest=MANIFEST if os.path.exists(MANIFEST) else None,
-    contents_directory='libs'
-)
-
-# =============================================================================
 #   FINAL MERGE & ORGANIZE
 # =============================================================================
 coll = COLLECT( #type: ignore
@@ -180,11 +147,6 @@ coll = COLLECT( #type: ignore
     a_stu.binaries,
     a_stu.zipfiles,
     a_stu.datas,
-
-    exe_keygen,
-    a_keygen.binaries,
-    a_keygen.zipfiles,
-    a_keygen.datas,
     
     strip=False,
     upx=True,

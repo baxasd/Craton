@@ -2,6 +2,7 @@ import logging
 import pyrealsense2 as rs
 import numpy as np
 import configparser
+from src.utils.theme import SETTINGS_PATH
 
 # Hook into our standard logging system
 log = logging.getLogger("RealSense")
@@ -17,7 +18,7 @@ class RealSenseCamera:
         
         # ── Read Settings from INI ──
         config = configparser.ConfigParser()
-        config.read('settings.ini')
+        config.read(SETTINGS_PATH)
         
         # Fallback to True and 156 if the user hasn't added these to the INI file yet
         auto_exposure = config.getboolean('Camera', 'auto_exposure', fallback=True)

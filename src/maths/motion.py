@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from core.io.structs import Frame, NAME_TO_ID
+from src.data.types import Frame, NAME_TO_ID
 
 # ── 1. Vector Extraction Helpers ─────────────────────────────────────────────
 

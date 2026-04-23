@@ -11,13 +11,15 @@ import cv2
 from rich.console import Console
 from rich.prompt import Prompt
 import time
-
 from PyQt6.QtCore import QThread, pyqtSignal, Qt
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QFrame, QSizePolicy)
 from PyQt6.QtGui import QPixmap, QIcon, QImage, QFont
+from src.radar.parse import RadarConfig
+from src.utils.theme import ICON_PATH, SETTINGS_PATH
+from src.utils.config import ensure_config
 
-from core.radar.parser import RadarConfig
-from core.ui.theme import ICON_PATH, SETTINGS_PATH
+# Ensure config exists before loading
+ensure_config(SETTINGS_PATH)
 
 # Initialize console globally (or at the top of your file)
 console = Console()
@@ -34,6 +36,7 @@ config.read(SETTINGS_PATH)
 HW_CFG_FILE     = config['Hardware']['radar_cfg_file']
 ZMQ_RADAR_PORT  = config['Network'].get('zmq_radar_port', '5555')
 ZMQ_CAM_PORT    = config['Network'].get('zmq_camera_port', '5556')
+ZMQ_KEY_PORT    = config['Network'].get('zmq_key_port', '5554')
 
 VIEW_IP         = config['Viewer']['default_ip']
 MAX_RANGE       = float(config['Viewer']['max_range_m'])
@@ -43,12 +46,33 @@ DISP_HIGH_PCT   = float(config['Viewer']['high_pct'])
 SMOOTH_GRID     = int(config['Viewer']['smooth_grid_size'])
 
 # Load Curve25519 encryption keys
-SERVER_PUBLIC = config['Security']['server_public'].encode('ascii')
 CLIENT_PUBLIC = config['Security']['client_public'].encode('ascii')
 CLIENT_SECRET = config['Security']['client_secret'].encode('ascii')
 
 COLOR_MAIN_BG = "#FFFFFF"
 COLOR_TEXT = "#333333"
+
+def fetch_public_key(ip: str):
+    """Temporary REQ socket to fetch server's public key (TOFU)."""
+    context = zmq.Context()
+    socket = context.socket(zmq.REQ)
+    socket.setsockopt(zmq.RCVTIMEO, 5000) # 5 second timeout
+    socket.connect(f"tcp://{ip}:{ZMQ_KEY_PORT}")
+    
+    try:
+        socket.send_string("REQ_KEY")
+        key = socket.recv()
+        log.info(f"TOFU: Successfully retrieved server public key from {ip}")
+        return key
+    except zmq.Again:
+        log.error(f"TOFU: Key request timed out for {ip}:{ZMQ_KEY_PORT}")
+        return None
+    except Exception as e:
+        log.error(f"TOFU: Key exchange failed: {e}")
+        return None
+    finally:
+        socket.close()
+        context.term()
 
 class ZmqRadarWorker(QThread):
     new_frame = pyqtSignal(np.ndarray, float, float) 
@@ -66,11 +90,16 @@ class ZmqRadarWorker(QThread):
         self.max_bin = min(int(MAX_RANGE / cfg.rangeRes), cfg.numRangeBins)
         self._expected_size = self.num_range_bins * self.num_vel_bins
 
+        # Fetch server public key via TOFU
+        server_pub = fetch_public_key(publisher_ip)
+        if server_pub is None:
+            raise ConnectionError(f"Failed to fetch public key from {publisher_ip}")
+
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.SUB)
         self.socket.curve_secretkey = CLIENT_SECRET
         self.socket.curve_publickey = CLIENT_PUBLIC
-        self.socket.curve_serverkey = SERVER_PUBLIC
+        self.socket.curve_serverkey = server_pub
         self.socket.connect(f"tcp://{publisher_ip}:{ZMQ_RADAR_PORT}")
         self.socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
@@ -111,11 +140,17 @@ class ZmqCameraWorker(QThread):
     def __init__(self, publisher_ip: str):
         super().__init__()
         self.running = True
+
+        # Fetch server public key via TOFU
+        server_pub = fetch_public_key(publisher_ip)
+        if server_pub is None:
+            raise ConnectionError(f"Failed to fetch public key from {publisher_ip}")
+
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.SUB)
         self.socket.curve_secretkey = CLIENT_SECRET
         self.socket.curve_publickey = CLIENT_PUBLIC
-        self.socket.curve_serverkey = SERVER_PUBLIC
+        self.socket.curve_serverkey = server_pub
         self.socket.connect(f"tcp://{publisher_ip}:{ZMQ_CAM_PORT}")
         self.socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
@@ -314,7 +349,7 @@ class LiveViewerWindow(QMainWindow):
             if f"j{p1}_px" in meta and f"j{p2}_px" in meta:
                 pt1 = (int(meta[f"j{p1}_px"]), int(meta[f"j{p1}_py"]))
                 pt2 = (int(meta[f"j{p2}_px"]), int(meta[f"j{p2}_py"]))
-                cv2.line(frame, pt1, pt2, (220, 220, 220), 2, cv2.LINE_AA)
+                cv2.line(frame, pt1, pt2, (220, 220, 220), 5, cv2.LINE_AA)
 
         for i in range(33):
             if f"j{i}_px" in meta and f"j{i}_py" in meta:

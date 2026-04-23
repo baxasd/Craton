@@ -40,3 +40,18 @@
 - Separated Secure Key generation
 - Now the settings scope has been changed to root level
 - Settings.ini file now can be generated automatically 
+
+## 0.3.2-beta.1
+
+- Fixed `settings.ini` and `records/` path resolution in compiled EXE mode
+- Added QR Code to Studio login screen for easy local network access
+- Added automatic local IP detection utility
+- Improved directory structure handling for portable builds
+
+# 1.0.0
+
+- First stable release of OST Suite
+- Finalized portable directory architecture
+- Production-ready Studio authentication with remote access
+- Consolidated multi-modal recording and analysis pipeline
+ 

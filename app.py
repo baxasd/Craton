@@ -5,6 +5,11 @@ from threading import Timer
 import streamlit.web.cli as stcli
 from rich.console import Console
 import time
+from src.utils.config import ensure_config
+from src.utils.theme import SETTINGS_PATH
+
+# Ensure config exists before launching
+ensure_config(SETTINGS_PATH)
 
 # Rich Console
 console = Console()
@@ -15,11 +20,9 @@ def open_browser():
 
 if __name__ == "__main__":
     
-    # Handle PyInstaller pathing if compiled into an executable
     if getattr(sys, 'frozen', False):
         application_path = sys._MEIPASS
         os.chdir(application_path)
-
 
     console.print(f"\n[bold]Craton Studio[/bold]")
     with console.status("[dim]Launching Craton Studio server...[/dim]", spinner="dots"):
@@ -28,11 +31,10 @@ if __name__ == "__main__":
         sys.argv = [
             "streamlit", 
             "run", 
-            "core/studio/studio.py", 
+            "src/studio/main.py", 
             "--global.developmentMode=false", 
             "--logger.level=error"
-        ]
-        
+        ]        
         time.sleep(2)
     console.print("[green]✔[/green] [dim]Server active[/dim]\n")
 
