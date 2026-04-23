@@ -8,9 +8,14 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
+from src.utils.theme import SETTINGS_PATH, BASE_DIR
+
 # ── 1. Load Settings ─────────────────────────────────────────────────────────
 config = configparser.ConfigParser()
-config.read('settings.ini')
+config.read(SETTINGS_PATH)
+
+# Path for records folder in the root directory
+RECORDS_DIR = os.path.join(BASE_DIR, 'records')
 
 # The Chunk Size determines how many frames we keep in RAM before writing to the Hard Drive.
 CHUNK_SIZE = int(config.get('Recording', 'chunk_size', fallback=100))
@@ -23,12 +28,12 @@ class CameraSessionWriter:
     Saves the 3D X/Y/Z coordinates of the 33 human joints to a Parquet file.
     """
     def __init__(self, metadata=None):
-        os.makedirs("records", exist_ok=True)
+        os.makedirs(RECORDS_DIR, exist_ok=True)
         self.metadata = metadata or {}
         
         # Generate a unique filename using the current time
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.filepath = f"records/camera_{timestamp}.parquet"
+        self.filepath = os.path.join(RECORDS_DIR, f"camera_{timestamp}.parquet")
         
         self.data_buffer = []
         self.chunk_size = CHUNK_SIZE
@@ -95,9 +100,9 @@ class RadarSessionWriter:
     Saves the raw, hexadecimal byte matrices from the TI Radar to a Parquet file.
     """
     def __init__(self, metadata=None):
-        os.makedirs("records", exist_ok=True)
+        os.makedirs(RECORDS_DIR, exist_ok=True)
         self.start_time_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.filepath = f"records/radar_session_{self.start_time_str}.parquet"
+        self.filepath = os.path.join(RECORDS_DIR, f"radar_session_{self.start_time_str}.parquet")
         
         self.metadata = metadata or {}
         self.metadata["session_start"] = self.start_time_str

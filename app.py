@@ -5,6 +5,11 @@ from threading import Timer
 import streamlit.web.cli as stcli
 from rich.console import Console
 import time
+from src.utils.config import ensure_config
+from src.utils.theme import SETTINGS_PATH
+
+# Ensure config exists before launching
+ensure_config(SETTINGS_PATH)
 
 # Rich Console
 console = Console()

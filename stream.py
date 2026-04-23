@@ -11,10 +11,14 @@ import numpy as np
 from src.radar.parse import parse_standard_frame
 from src.data.store import CameraSessionWriter, RadarSessionWriter
 from src.utils.theme import SETTINGS_PATH
+from src.utils.config import ensure_config
 from rich.console import Console, Group
 from rich.panel import Panel
 from rich.prompt import Prompt
 from rich.rule import Rule
+
+# Ensure config exists before loading
+ensure_config(SETTINGS_PATH)
 
 # Rich Console
 console = Console()
@@ -35,10 +39,43 @@ HW_CLI_PORT = config['Hardware']['cli_port']
 HW_DATA_PORT = config['Hardware']['data_port']
 ZMQ_RADAR_PORT = config['Network'].get('zmq_radar_port', '5555')
 ZMQ_CAM_PORT = config['Network'].get('zmq_camera_port', '5556')
+ZMQ_KEY_PORT = config['Network'].get('zmq_key_port', '5554')
 
 # Load Curve25519 encryption keys for the server
 SERVER_PUBLIC = config['Security']['server_public'].encode('ascii')
 SERVER_SECRET = config['Security']['server_secret'].encode('ascii')
+
+def start_key_server(zmq_context: zmq.Context):
+    """Background thread to serve the server's public key to clients (TOFU)."""
+    import threading
+    
+    def server_loop():
+        socket = zmq_context.socket(zmq.REP)
+        try:
+            socket.bind(f"tcp://*:{ZMQ_KEY_PORT}")
+            log.info(f"Key exchange server active on port {ZMQ_KEY_PORT}")
+        except zmq.ZMQError as e:
+            if e.errno == zmq.EADDRINUSE:
+                log.warning(f"Key exchange port {ZMQ_KEY_PORT} already in use. Using existing key server.")
+                return
+            else:
+                log.error(f"Key server bind error: {e}")
+                return
+
+        while True:
+            try:
+                msg = socket.recv_string()
+                if msg == "REQ_KEY":
+                    socket.send(SERVER_PUBLIC)
+                else:
+                    socket.send(b"ERR_INVALID_REQ")
+            except Exception as e:
+                log.error(f"Key server error: {e}")
+                break
+        socket.close()
+
+    t = threading.Thread(target=server_loop, daemon=True)
+    t.start()
 
 def connect_radar():
     """Initialize the TI mmWave radar and upload the hardware profile."""
@@ -203,8 +240,27 @@ def run_camera_stream(zmq_context: zmq.Context, record: bool):
 
 def main():
     """CLI bootstrapper and context manager."""
-    context = zmq.Context()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--radar", action="store_true", help="Launch Radar stream directly")
+    parser.add_argument("--camera", action="store_true", help="Launch Camera stream directly")
+    parser.add_argument("--record", action="store_true", help="Start in recording mode")
+    args = parser.parse_args()
 
+    context = zmq.Context()
+    
+    # Start TOFU key server in the background
+    start_key_server(context)
+
+    # Handle Direct CLI Launch
+    if args.radar:
+        run_radar_stream(context, record=args.record)
+        sys.exit(0)
+    elif args.camera:
+        run_camera_stream(context, record=args.record)
+        sys.exit(0)
+
+    # Fallback to Interactive Menu
     menu_content = Group(
         Rule("Radar", align="center", style="line"),
         "  [red]1.[/red] Preview Radar",

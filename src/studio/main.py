@@ -1,5 +1,6 @@
 import streamlit as st
 from src.utils.theme import LOGO_PATH, APP_VERSION, STUDIO_PASS, ICON_PATH
+from src.utils.config import get_local_ip
 from src.studio import hub as hub, prep as prep, eval as analysis, radar as radar, plot as viz
 
 # Global Page Config
@@ -21,9 +22,6 @@ def check_password():
     st.markdown("""<style>[data-testid="stSidebar"] {display: none;}</style>""", unsafe_allow_html=True)
 
     # Custom Space to push Login Container to Center of the Screen
-    st.write("")
-    st.write("")
-    st.write("")
     st.write("")
     st.write("")
     st.write("")
@@ -54,6 +52,18 @@ def check_password():
                         st.rerun()
                     else:
                         st.error("Incorrect passcode. Please try again.")
+
+            # QR Code for Local Access
+            local_ip = get_local_ip()
+            studio_url = f"http://{local_ip}:8501"
+            qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={studio_url}"
+            
+            st.markdown("---")
+            q_col1, q_col2 = st.columns([1, 2])
+            with q_col1:
+                st.image(qr_api_url, caption="Scan to access", width=120)
+            with q_col2:
+                st.markdown(f"<div style='margin-top: 25px;'><p style='margin:0; font-size:0.8rem; color:#666;'>Local Network Access:</p><p style='margin:0; font-weight:bold; font-size:0.9rem;'>{studio_url}</p></div>", unsafe_allow_html=True)
 
             # Copyright message
             st.markdown("<p style='text-align: left; color: #999; font-size: 0.8rem; margin-top: 20px;'>Craton Suite &copy; 2026</p>", unsafe_allow_html=True)

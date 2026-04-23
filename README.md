@@ -6,67 +6,79 @@
 
 OST Suite is a high-performance, distributed workstation for recording, processing, and visualizing multi-modal skeletal kinematics and micro-Doppler radar data. 
 
-![Version](https://img.shields.io/badge/version-0.3.1--beta.1-orange)
-![Python](https://img.shields.io/badge/python-3.12-green)
-![ZeroMQ](https://img.shields.io/badge/ZeroMQ-Curve25519-red)
+![Version](https://img.shields.io/badge/version-1.0.0-green)
+![Python](https://img.shields.io/badge/python-3.11-green)
+![ZeroMQ](https://img.shields.io/badge/ZeroMQ-TOFU--Curve25519-red)
 
-> **⚠️ Beta Release:** Version 0.3.1-beta.1 introduces standalone `.exe` packaging. Please report any bugs or errors in the Issues tab.
-
----
-
-## The Three Core Modules
-
-### 🛰️ OST Streamer
-The hardware-interfacing node. Captures and encrypts live radar and camera telemetry.
-
-### 🖥️ OST Viewer
-The live monitoring dashboard. High-speed visualization of encrypted network streams.
-
-### 🧪 OST Studio
-The offline analysis laboratory. A specialized workbench for post-processing recorded `.parquet` sessions.
+> **🚀 Stable Release:** Version 1.0.0 marks the first production-ready release of the OST Suite.
 
 ---
 
-## Quick Start (Standalone Beta)
+## 🏛️ Project Architecture
 
-1. **Download:** Get the latest release `.zip` and extract it.
-2. **Configure:** Run keygen.py to generate `settings.ini` file which is required for programs to launch.
-4. **Launch:** Launch modules
+The suite is organized into a modular directory structure for scalability and maintainability:
+
+```
+src/
+├── core/               (Internal application state & logic)
+├── vision/             (Skeletal tracking & Depth estimation)
+├── hardware/           (TI Radar & Intel RealSense drivers)
+├── radar/              (DSP, FFT processing & Parsing)
+├── studio/             (Offline Laboratory UI)
+├── data/               (Parquet I/O & Data models)
+├── maths/              (Filtering & Motion kinematics)
+└── utils/              (Shared configs & Global themes)
+```
 
 ---
 
-## Running the Suite
+## 🛰️ Core Modules
 
-Ensure your hardware is plugged in and `settings.ini` has the correct COM ports and IPs defined.
+### 📡 OST Streamer (`stream.py`)
+The hardware-interfacing node. Captures live telemetry, performs local parsing, and broadcasts encrypted streams via ZMQ. Features an automated **TOFU (Trust On First Use)** key server for seamless client connectivity.
 
-* **Start Hardware Capture:** Launch **Streamer**. *(Note: Radar and Camera streams should be run in separate terminals or computers).*
-* **Watch Live Feed:** Launch **Viewer** to monitor the encrypted network stream.
-* **Analyze Recorded Data:** Launch **Studio** to analyze saved data files offline.
+### 🖥️ OST Viewer (`view.py`)
+The live monitoring dashboard. Automatically handshakes with the Streamer to retrieve encryption keys and visualizes high-speed skeletal and radar heatmaps.
+
+### 🧪 OST Studio (`app.py`)
+The offline analysis laboratory. A Streamlit-based workbench for post-processing recorded `.parquet` sessions and gait analysis. Now features **Remote Access QR Codes** on the login screen for quick connectivity from mobile devices or other computers on the same network.
 
 ---
 
-## Developer Setup
+## 🔐 Security & TOFU
 
-If you prefer to run from source code:
+The suite uses **CurveZMQ (Curve25519)** for end-to-end encryption. 
+With the new **TOFU Architecture**, manual key distribution is no longer required:
+1. **Publisher** starts a background key-exchange thread on port `5554`.
+2. **Listener** connects to the key port, retrieves the server's public key, and closes the temporary link.
+3. **Listener** establishes the secure, encrypted data stream on ports `5555`/`5556`.
 
-1. Clone the repository and create a Python 3.11 virtual environment.
-2. `pip install -r requirements.txt`
-3. Generate keys: `python keygen.py` - move generated settings.ini file inside libs folder
-4. Run modules directly
+---
+
+## 🚀 Quick Start
+
+The suite now features **Zero-Configuration Setup**. Cryptographic keys and default settings are generated automatically on the first launch.
+
+1. **Stream:** Run `python stream.py` on the computer connected to hardware.
+2. **View:** Run `python view.py` on any computer in the network to watch the live feed.
+3. **Analyze:** Run `python app.py` to launch the offline Studio laboratory.
+
+> **Note:** On the first run, a `settings.ini` file will be created in the root directory. You can edit this file to change COM ports, IP addresses, or the default Studio password (initially set to `admin`).
+
+---
 
 ## ⚙️ Supported Hardware
 
 **Texas Instruments IWR6843ISK**
-A 60-GHz mmWave radar sensor. It captures high-resolution 3D point clouds and micro-Doppler signatures, which are essential for the suite's non-intrusive skeletal tracking and velocity analysis.
+60-GHz mmWave radar sensor for non-intrusive velocity and point-cloud capture.
 
 **Intel RealSense D435i**
-An advanced RGB-Depth camera with an integrated internal IMU. It provides the high-fidelity spatial video streams required to calculate precise multi-modal skeletal kinematics and joint angles.
+RGB-Depth camera for precise skeletal kinematics and joint angle calculation.
 
 ## 🤝 Contributing
 
-We love community contributions, especially for the OST Studio UI and data analysis features! 
+We welcome community contributions and improvements! To ensure the stability of the core system, please follow these guidelines:
 
-To keep the system stable, we have specific rules about what can be merged. 
-Please read through [Contributing Guidelines](CONTRIBUTING.md) before opening an issue or Pull Request. 
-
-By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md).
+1. **Software & UI:** Contributions to the Studio UI, data processing logic, and mathematical filters are highly encouraged.
+2. **Hardware Drivers:** To maintain system integrity and hardware driver stability, **Pull Requests involving changes to the `src/hardware/` or `src/radar/` core drivers will not be accepted.**
+3. **Bug Reports:** If you find a bug, please open an issue with detailed reproduction steps.

@@ -26,11 +26,13 @@ COLOR_CENTROID_SHADOW = "black"
 COLOR_ZERO_LINE = "rgba(255, 255, 255, 0.4)" 
 
 if getattr(sys, 'frozen', False):
-    ROOT_DIR = os.path.join(sys._MEIPASS)
-    SETTINGS_PATH = os.path.join('..', ROOT_DIR, 'settings.ini')
+    ROOT_DIR = sys._MEIPASS
+    BASE_DIR = os.path.dirname(sys.executable)
+    SETTINGS_PATH = os.path.join(BASE_DIR, 'settings.ini')
 else:
     _current_dir = os.path.dirname(os.path.abspath(__file__))
     ROOT_DIR = os.path.abspath(os.path.join(_current_dir, '..', '..'))
+    BASE_DIR = ROOT_DIR
     SETTINGS_PATH = os.path.join(ROOT_DIR, 'settings.ini')
 
 LOGO_PATH = os.path.join(ROOT_DIR, 'assets', 'logo.png')
@@ -40,5 +42,5 @@ COMMAND_ICON = os.path.join(ROOT_DIR, 'assets', 'command.ico')
 config = configparser.ConfigParser(interpolation=None)
 config.read(SETTINGS_PATH)
 
-APP_VERSION = "v0.3.1-beta.1"
+APP_VERSION = "v1.0.0"
 STUDIO_PASS = config.get('Security', 'studio_password', fallback='admin')
