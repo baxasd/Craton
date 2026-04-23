@@ -38,7 +38,7 @@ def check_password():
             
             # SubTexts under the Logo
             st.markdown("<p style='font-weight: bold; color: #666; font-size: 0.9rem; '>The Core of Motion</p>", unsafe_allow_html=True)
-            st.markdown("<p style='color: #242024; font-size: 1rem; margin-bottom: 10px; margin-top: 20px;'>Human Osteo Skeletal Tracking Suite</p>", unsafe_allow_html=True)
+            st.markdown("<p style='color: #242024; font-size: 1rem; margin-bottom: 10px; margin-top: 20px;'>Human Osteo Skeletal Tracking Suite (Craton)</p>", unsafe_allow_html=True)
             
             # Intentional form to wrap textbox and button to make the native Enter key work
             with st.form("login_form", border=False):

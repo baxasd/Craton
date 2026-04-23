@@ -9,7 +9,7 @@
 
 - Migration to Parquet from CSV file
 - Smoothing Functions has been changed from Savgol to Moving Average
-- Preprocessing Preview added to OST Studio
+- Preprocessing Preview added to Craton Studio
 - Metadata Reading has been fixed for visualization
 
 ## 0.2.1
@@ -50,7 +50,7 @@
 
 # 1.0.0
 
-- First stable release of OST Suite
+- First stable release of Craton Suite
 - Finalized portable directory architecture
 - Production-ready Studio authentication with remote access
 - Consolidated multi-modal recording and analysis pipeline
