@@ -1,5 +1,6 @@
 import streamlit as st
-from src.utils.theme import LOGO_PATH
+import os
+from src.utils.theme import LOGO_PATH, CAMERA_DEMO_PATH, RADAR_DEMO_PATH
 
 def render():
      
@@ -23,8 +24,6 @@ def render():
             st.markdown("#### Welcome to Craton Studio")
             st.markdown("""  
                 A unified workspace for human movement analysis.    
-                Craton integrates 3D skeletal tracking with Radar Micro-Doppler analysis to understand complex gait dynamics. 
-
                 Select a module to begin.
                 """)
             
@@ -51,52 +50,70 @@ def render():
                     - **DSP Engine:** SciPy & NumPy
                     """)
 
+            # Demo Resources section
             st.write("")
+            st.markdown("#### Demo Resources")
+            d_col1, d_col2 = st.columns(2)
 
-            # Credits Section
-            st.markdown("#### Acknowledgements")
-            
-            st.info("""
-            **Institution:** University of Roehampton  
-            **Research Teams:** CEBE, School of Health and Life Sciences   
-            **Advisors:** Jose Peredes, Lisa Haskel  
-            **Development:** Source Code and binary executables can be found here: [GitHub](https://github.com/baxasd/craton).  
-            **License:** This software is open-source and released under the [MIT License](https://opensource.org/licenses/MIT).   
-            *Developed in partial fulfillment of the requirements for the Bachelor of Science in Computer Science.*   
+            with d_col1:
+                with st.container(border=True):
+                    st.markdown("**Camera Demo**")
+                    st.caption("Skeletal joint data (.csv)")
+                    if os.path.exists(CAMERA_DEMO_PATH):
+                        with open(CAMERA_DEMO_PATH, "rb") as f:
+                            st.download_button("Download", f.read(), file_name="camera_demo.csv", use_container_width=True, key="dl_cam")
+                    else:
+                        st.button("File Missing", disabled=True, use_container_width=True, key="dl_cam_miss")
+
+            with d_col2:
+                with st.container(border=True):
+                    st.markdown("**Radar Demo**")
+                    st.caption("Micro-Doppler matrix (.parquet)")
+                    if os.path.exists(RADAR_DEMO_PATH):
+                        with open(RADAR_DEMO_PATH, "rb") as f:
+                            st.download_button("Download", f.read(), file_name="radar_demo.parquet", use_container_width=True, key="dl_radar")
+                    else:
+                        st.button("File Missing", disabled=True, use_container_width=True, key="dl_radar_miss")
+
+            # Shortened Credits Section
+            st.write("")
+            st.caption("""
+            **University of Roehampton - CEBE & SHLS** | Bakhtiyor Sohibnazarov, Jose Peredes & Lisa Haskel | [GitHub](https://github.com/baxasd/craton) | [MIT License](https://opensource.org/licenses/MIT)  
+            *Developed as part of the BSc Computer Science degree*
             """)
 
-        # Individual Modules Containers
-        with action_col:
-            st.markdown("#### Modules")
-            
-            # Preprocessing
-            with st.container(border=True, gap='xsmall'):
-                st.markdown("##### Data Prep")
-                st.caption("Clean, trim, and filter raw datasets.")
-                if st.button("Launch", key="btn_prep", type="primary", width='stretch'):
-                    st.session_state.current_page = "prep"
-                    st.rerun()
-                
-            # Analysis
-            with st.container(border=True, gap='xsmall'):
-                st.markdown("##### Gait Analysis")
-                st.caption("Calculate posture metrics and export.")
-                if st.button("Launch", key="btn_gait", type="primary", width='stretch'):
-                    st.session_state.current_page = "analysis"
-                    st.rerun()
+            # Individual Modules Containers
+            with action_col:
+                st.markdown("#### Modules")
 
-            # Visualization
-            with st.container(border=True, gap='xsmall'):
-                st.markdown("##### Motion Lab")
-                st.caption("View captured motion and 2D tracking.")
-                if st.button("Launch", key="btn_viz", type="primary", width='stretch'):
-                    st.session_state.current_page = "viz"
-                    st.rerun()
+                # Preprocessing
+                with st.container(border=True, gap='xsmall'):
+                    st.markdown("##### Data Prep")
+                    st.caption("Clean, trim, and filter raw datasets.")
+                    if st.button("Launch", key="btn_prep", type="primary", width='stretch'):
+                        st.session_state.current_page = "prep"
+                        st.rerun()
 
-            # mmWave analysis
-            with st.container(border=True, gap='xsmall'):
-                st.markdown("##### Radar Analysis")
-                st.caption("Analyze micro-Doppler spectrograms.")
-                if st.button("Launch", key="btn_radar", type="primary", width='stretch'):
-                    st.session_state.current_page = "radar"
-                    st.rerun()
+                # Analysis
+                with st.container(border=True, gap='xsmall'):
+                    st.markdown("##### Gait Analysis")
+                    st.caption("Calculate posture metrics and export.")
+                    if st.button("Launch", key="btn_gait", type="primary", width='stretch'):
+                        st.session_state.current_page = "analysis"
+                        st.rerun()
+
+                # Visualization
+                with st.container(border=True, gap='xsmall'):
+                    st.markdown("##### Motion Lab")
+                    st.caption("View captured motion and 2D tracking.")
+                    if st.button("Launch", key="btn_viz", type="primary", width='stretch'):
+                        st.session_state.current_page = "viz"
+                        st.rerun()
+
+                # mmWave analysis
+                with st.container(border=True, gap='xsmall'):
+                    st.markdown("##### Radar Analysis")
+                    st.caption("Analyze micro-Doppler spectrograms.")
+                    if st.button("Launch", key="btn_radar", type="primary", width='stretch'):
+                        st.session_state.current_page = "radar"
+                        st.rerun()

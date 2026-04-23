@@ -61,13 +61,9 @@ def check_password():
             st.markdown("---")
             q_col1, q_col2 = st.columns([1, 2])
             with q_col1:
-                st.image(qr_api_url, caption="Scan to access", width=120)
+                st.image(qr_api_url, caption="Scan to access", width=130)
             with q_col2:
                 st.markdown(f"<div style='margin-top: 25px;'><p style='margin:0; font-size:0.8rem; color:#666;'>Local Network Access:</p><p style='margin:0; font-weight:bold; font-size:0.9rem;'>{studio_url}</p></div>", unsafe_allow_html=True)
-
-            # Copyright message
-            st.markdown("<p style='text-align: left; color: #999; font-size: 0.8rem; margin-top: 20px;'>Craton Suite &copy; 2026</p>", unsafe_allow_html=True)
-    
     return False
 
 # Terminate if Check Password Failed

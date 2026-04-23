@@ -41,7 +41,7 @@ The hardware-interfacing node. Captures live telemetry, performs local parsing, 
 The live monitoring dashboard. Automatically handshakes with the Streamer to retrieve encryption keys and visualizes high-speed skeletal and radar heatmaps.
 
 ### 🧪 OST Studio (`app.py`)
-The offline analysis laboratory. A Streamlit-based workbench for post-processing recorded `.parquet` sessions and gait analysis. Now features **Remote Access QR Codes** on the login screen for quick connectivity from mobile devices or other computers on the same network.
+The offline analysis laboratory. A Streamlit-based workbench for post-processing recorded `.parquet` sessions and gait analysis. Now features **Remote Access QR Codes** and **Instant Demo Downloads** (Camera & Radar) on the login screen for quick evaluation.
 
 ---
 

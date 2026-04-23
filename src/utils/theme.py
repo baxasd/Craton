@@ -38,6 +38,8 @@ else:
 LOGO_PATH = os.path.join(ROOT_DIR, 'assets', 'logo.png')
 ICON_PATH = os.path.join(ROOT_DIR, 'assets', 'icon.ico')
 COMMAND_ICON = os.path.join(ROOT_DIR, 'assets', 'command.ico')
+CAMERA_DEMO_PATH = os.path.join(ROOT_DIR, 'assets', 'camera_demo.csv')
+RADAR_DEMO_PATH = os.path.join(ROOT_DIR, 'assets', 'radar_demo.parquet')
 
 config = configparser.ConfigParser(interpolation=None)
 config.read(SETTINGS_PATH)
