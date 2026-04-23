@@ -1,16 +1,16 @@
-# OST Suite 
+# Craton Suite 
 
-<p align="left"><img src="assets/logo.png" alt="OST Suite Logo" width="250"></p>
+<p align="left"><img src="assets/logo.png" alt="Craton Suite Logo" width="250"></p>
 
 #### Human Osteo-Skeletal Tracker
 
-OST Suite is a high-performance, distributed workstation for recording, processing, and visualizing multi-modal skeletal kinematics and micro-Doppler radar data. 
+Craton Suite is a high-performance, distributed workstation for recording, processing, and visualizing multi-modal skeletal kinematics and micro-Doppler radar data. 
 
 ![Version](https://img.shields.io/badge/version-1.0.0-green)
 ![Python](https://img.shields.io/badge/python-3.11-green)
 ![ZeroMQ](https://img.shields.io/badge/ZeroMQ-TOFU--Curve25519-red)
 
-> **🚀 Stable Release:** Version 1.0.0 marks the first production-ready release of the OST Suite.
+> **🚀 Stable Release:** Version 1.0.0 marks the first production-ready release of the Craton Suite.
 
 ---
 
@@ -34,13 +34,13 @@ src/
 
 ## 🛰️ Core Modules
 
-### 📡 OST Streamer (`stream.py`)
+### 📡 Craton Streamer (`stream.py`)
 The hardware-interfacing node. Captures live telemetry, performs local parsing, and broadcasts encrypted streams via ZMQ. Features an automated **TOFU (Trust On First Use)** key server for seamless client connectivity.
 
-### 🖥️ OST Viewer (`view.py`)
+### 🖥️ Craton Viewer (`view.py`)
 The live monitoring dashboard. Automatically handshakes with the Streamer to retrieve encryption keys and visualizes high-speed skeletal and radar heatmaps.
 
-### 🧪 OST Studio (`app.py`)
+### 🧪 Craton Studio (`app.py`)
 The offline analysis laboratory. A Streamlit-based workbench for post-processing recorded `.parquet` sessions and gait analysis. Now features **Remote Access QR Codes** and **Instant Demo Downloads** (Camera & Radar) on the login screen for quick evaluation.
 
 ---

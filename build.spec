@@ -151,6 +151,6 @@ coll = COLLECT( #type: ignore
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='OST Suite',
+    name='Craton Suite',
     contents_directory='libs' 
 )
