@@ -11,7 +11,7 @@ from src.utils.theme import COLOR_LEFT, COLOR_RIGHT
 @st.cache_data(show_spinner=False)
 def process_analysis_data(df_raw):
     session = structs.df_to_session(df_raw)
-    ts_df, _ = kinematics.generate_analysis_report(session)
+    ts_df, session_stats = kinematics.generate_analysis_report(session)
     
     ts_df['time_sec'] = np.floor(ts_df['timestamp']).astype(int)
     numeric_cols = [c for c in ts_df.columns if c not in ['frame', 'time_sec', 'timestamp']]
@@ -35,10 +35,16 @@ def process_analysis_data(df_raw):
     stats_df = df_per_sec.drop(columns=['time_sec', 'timestamp', 'time_min'], errors='ignore').describe().T
     stats_df['trend/min'] = stats_df.index.map(lambda x: trend_metrics.get(f"slope_{x}", 0.0))
 
+    # Merge session-wide metrics (SPM, VO, Trends) into the stats_df
+    # We look at the 'mean' row of session_stats for columns that don't exist in stats_df
+    for col in session_stats.columns:
+        if col not in stats_df.index:
+            stats_df.loc[col, 'mean'] = session_stats.loc['mean', col]
+
     return ts_df, df_per_sec, df_per_min, stats_df
 
 # Creates Plotly plots
-def create_kinematic_plot(df, x_col, y_cols, names, colors, title, show_env=False):
+def create_kinematic_plot(df, x_col, y_cols, names, colors, title, show_env=False, show_trend=False):
     fig = go.Figure()
     window_size = max(1, len(df)//20) if show_env else 1
 
@@ -57,6 +63,13 @@ def create_kinematic_plot(df, x_col, y_cols, names, colors, title, show_env=Fals
             fig.add_trace(go.Scatter(x=x_vals, y=roll_mean, mode='lines', name=name, line=dict(color=color, width=2.5)))
         else:
             fig.add_trace(go.Scatter(x=x_vals, y=y_vals, mode='lines', name=name, line=dict(color=color, width=2.5)))
+
+        if show_trend:
+            mask = ~np.isnan(y_vals) & ~np.isnan(x_vals)
+            if mask.sum() > 1:
+                slope, intercept = np.polyfit(x_vals[mask], y_vals[mask], 1)
+                trend_y = slope * x_vals + intercept
+                fig.add_trace(go.Scatter(x=x_vals, y=trend_y, mode='lines', name=f"{name} Trend", line=dict(color=color, width=1.5, dash='dash'), hoverinfo='skip'))
 
     fig.update_layout(
         title=title, xaxis_title=x_col.capitalize(), yaxis_title="Degrees (°)",
@@ -116,6 +129,7 @@ def render():
             st.markdown("### Visualization Controls")
             grouping = st.selectbox("Resolution:", ["Frames", "Seconds", "Minutes"], index=1)
             show_env = st.checkbox("Show Variance Envelopes", value=True)
+            show_trend = st.checkbox("Show Linear Trendlines", value=True)
             
             st.divider()
 
@@ -163,12 +177,23 @@ def render():
             plot_df = df_per_min
             x_col = "time_min"
 
-        # Trunk Lean
-        with st.container(border=True):
-            fig_lean = create_kinematic_plot(plot_df, x_col, ['lean_x', 'lean_z'], ["Sagittal", "Frontal"], [COLOR_RIGHT, COLOR_LEFT], "Trunk Lean Dynamics", show_env)
-            st.plotly_chart(fig_lean, width='stretch')
+        # Trunk Lean & Symmetry Grid
+        grid_cols = st.columns(2)
+        with grid_cols[0]:
+            with st.container(border=True):
+                fig_lean = create_kinematic_plot(plot_df, x_col, ['lean_x', 'lean_z'], ["Stable 2D (Side)", "Depth Projection (Forward)"], [COLOR_RIGHT, COLOR_LEFT], "Trunk Lean Dynamics", show_env, show_trend)
+                st.plotly_chart(fig_lean, width='stretch')
+        
+        with grid_cols[1]:
+            with st.container(border=True):
+                # Plotting Symmetry over time
+                fig_sym = create_kinematic_plot(plot_df, x_col, ['sym_knee', 'sym_hip'], ["Knee Symmetry", "Hip Symmetry"], ["#FF4B4B", "#FFA421"], "Limb Symmetry Indices (%)", show_env, show_trend)
+                fig_sym.update_layout(yaxis_title="Symmetry Index (%)", yaxis_range=[-20, 20])
+                st.plotly_chart(fig_sym, width='stretch')
 
-        # Charts 2-5: The 2x2 Grid
+        # Joint Angles Section
+        st.markdown("---")
+        st.markdown("##### Joint Kinematics")
         plots_config = [
             ("Knee Flexion", ['l_knee', 'r_knee'], ["Left Knee", "Right Knee"]),
             ("Hip Flexion", ['l_hip', 'r_hip'], ["Left Hip", "Right Hip"]),
@@ -180,5 +205,5 @@ def render():
         for i, (title, y_cols, names) in enumerate(plots_config):
             with cols[i % 2]:
                 with st.container(border=True):
-                    fig = create_kinematic_plot(plot_df, x_col, y_cols, names, [COLOR_LEFT, COLOR_RIGHT], title, show_env)
+                    fig = create_kinematic_plot(plot_df, x_col, y_cols, names, [COLOR_LEFT, COLOR_RIGHT], title, show_env, show_trend)
                     st.plotly_chart(fig,  width='stretch')

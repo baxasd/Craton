@@ -125,10 +125,29 @@ def extract_gait_metrics(spec: np.ndarray, t_axis: np.ndarray, v_axis: np.ndarra
             filtered_sig = butter_bandpass_filter(movement, 1.0, 4.0, fps_est)
             peaks, _ = find_peaks(filtered_sig, distance=int(fps_est / 4.0), prominence=0.4)
             
-            total_steps = len(peaks)
-            duration_min = float(t_axis[-1]) / 60.0
-            if duration_min > 0:
-                spm = total_steps / duration_min
+            # Primary: Peak Counting
+            spm_peaks = len(peaks) / (float(t_axis[-1]) / 60.0) if t_axis[-1] > 0 else 0.0
+            
+            # Secondary: Autocorrelation (more robust to noisy peaks)
+            # We look for the first major lag peak in the expected step range
+            corr = np.correlate(filtered_sig, filtered_sig, mode='full')
+            corr = corr[len(corr)//2:]
+            
+            # Search range for 60-240 SPM (1.0 - 4.0 Hz)
+            min_lag = int(fps_est / 4.0)
+            max_lag = int(fps_est / 1.0)
+            
+            if len(corr) > max_lag:
+                lag_peak = np.argmax(corr[min_lag:max_lag]) + min_lag
+                spm_corr = (60.0 * fps_est) / lag_peak
+                
+                # If they are close, use a weighted average, otherwise prefer peaks if prominent
+                if abs(spm_peaks - spm_corr) < 20:
+                    spm = (spm_peaks + spm_corr) / 2.0
+                else:
+                    spm = spm_peaks
+            else:
+                spm = spm_peaks
                 
         except Exception as e:
             log.warning(f"Cadence processing error: {e}")
