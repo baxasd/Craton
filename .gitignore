@@ -19,7 +19,6 @@ env/
 .idea/
 
 # Local Data
-*.csv
 *.bag
 
 # Sensitive Files
