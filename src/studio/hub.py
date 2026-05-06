@@ -78,7 +78,7 @@ def render():
             # Shortened Credits Section
             st.write("")
             st.caption("""
-            **University of Roehampton - CEBE & SHLS** | Bakhtiyor Sohibnazarov, Jose Peredes & Lisa Haskel | [GitHub](https://github.com/baxasd/craton) | [MIT License](https://opensource.org/licenses/MIT)  
+            **University of Roehampton - CEBE & SHLS** | Bakhtiyor Sohibnazarov, Jose Paredes & Lisa Haskel | [GitHub](https://github.com/baxasd/craton) | [MIT License](https://opensource.org/licenses/MIT)  
             *Developed as part of the BSc Computer Science degree*
             """)
 

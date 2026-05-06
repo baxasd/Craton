@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<style>
+  body { font-family: sans-serif; background: #e2e8f0; margin: 20px; }
+  .poster { width: 1000px; margin: auto; background: white; outline: 2px solid #000; }
+  .row { display: flex; border-bottom: 2px solid #cbd5e0; }
+  
+  /* Header Area */
+  .header { padding: 20px; align-items: center; }
+  .logo-box { width: 25%; height: 80px; background: #edf2f7; border: 2px dashed #a0aec0; display: grid; place-items: center; }
+  .title-box { width: 75%; padding-left: 20px; }
+  
+  /* Dark Hero Area */
+  .hero { background: #1a202c; color: white; }
+  .hero-left { width: 30%; padding: 20px; border-right: 2px solid #4a5568; }
+  .hero-right { width: 70%; padding: 20px; }
+  .main-img-box { width: 100%; height: 350px; background: #2d3748; border: 2px dashed #718096; display: grid; place-items: center; color: #a0aec0; }
+  
+  /* Middle: How It Works */
+  .how-it-works { padding: 20px; text-align: center; }
+  .section-badge { background: #38a169; color: white; padding: 8px 20px; display: inline-block; font-weight: bold; margin-bottom: 20px; }
+  .steps-grid { display: flex; gap: 15px; }
+  .step-card { flex: 1; text-align: left; }
+  .step-img-box { height: 120px; background: #edf2f7; border: 2px dashed #a0aec0; margin-top: 10px; display: grid; place-items: center; color: #718096; font-size: 0.9em; text-align: center; padding: 10px; }
+  
+  /* Bottom: Features & Apps */
+  .footer-grid { background: #2d3748; color: white; display: flex; padding: 20px; border-bottom: none; }
+  .features-col { width: 35%; padding-right: 20px; border-right: 2px solid #4a5568; }
+  .apps-col { width: 65%; padding-left: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+  .app-box { border: 2px dashed #718096; padding: 15px; text-align: center; color: #e2e8f0; }
+</style>
+</head>
+<body>
+
+<div class="poster">
+  
+  <div class="row header">
+    <div class="logo-box">[Logo Placeholder]</div>
+    <div class="title-box">
+      <h1 style="margin:0; font-size: 3em;">MAIN TITLE</h1>
+      <h3 style="margin:5px 0 0; color: #4a5568;">Subtitle / Tagline Placeholder</h3>
+    </div>
+  </div>
+
+  <div class="row hero">
+    <div class="hero-left">
+      <h3 style="color: #68d391;">Value Proposition</h3>
+      <p>[Icon + Text Placeholder 1]</p>
+      <p>[Icon + Text Placeholder 2]</p>
+      <p>[Icon + Text Placeholder 3]</p>
+    </div>
+    <div class="hero-right">
+      <div class="main-img-box">[Large Point Cloud / Diagram Placeholder]</div>
+    </div>
+  </div>
+
+  <div class="how-it-works row">
+    <div style="width: 100%;">
+      <div class="section-badge">HOW IT WORKS</div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <h4>1. Step One</h4>
+          <p style="font-size: 0.9em; color: #4a5568;">Description text.</p>
+          <div class="step-img-box">[Image/Graph]</div>
+        </div>
+        <div class="step-card">
+          <h4>2. Step Two</h4>
+          <p style="font-size: 0.9em; color: #4a5568;">Description text.</p>
+          <div class="step-img-box">[Image/Graph]</div>
+        </div>
+        <div class="step-card">
+          <h4>3. Step Three</h4>
+          <p style="font-size: 0.9em; color: #4a5568;">Description text.</p>
+          <div class="step-img-box">[Image/Graph]</div>
+        </div>
+        <div class="step-card">
+          <h4>4. Step Four</h4>
+          <p style="font-size: 0.9em; color: #4a5568;">Description text.</p>
+          <div class="step-img-box">[Image/Graph]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer-grid">
+    <div class="features-col">
+      <h3 style="color: #68d391; text-align: center;">KEY FEATURES</h3>
+      <p>[Feature 1 Details]</p>
+      <p>[Feature 2 Details]</p>
+      <p>[Feature 3 Details]</p>
+    </div>
+    <div style="width: 65%;">
+      <h3 style="color: #68d391; text-align: center; margin-top: 0;">APPLICATIONS</h3>
+      <div class="apps-col" style="width: 100%; padding-left: 0;">
+        <div class="app-box">[Icon]<br>App Area 1</div>
+        <div class="app-box">[Icon]<br>App Area 2</div>
+        <div class="app-box">[Icon]<br>App Area 3</div>
+        <div class="app-box">[Icon]<br>App Area 4</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
