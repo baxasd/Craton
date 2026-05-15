@@ -31,7 +31,7 @@ if __name__ == "__main__":
         sys.argv = [
             "streamlit", 
             "run", 
-            "src/studio/main.py", 
+            "src/studio/router.py", 
             "--global.developmentMode=false", 
             "--logger.level=error"
         ]        

@@ -12,12 +12,9 @@ import re
 from rich.console import Console
 from rich.prompt import Prompt
 import time
-from PyQt6.QtCore import QThread, pyqtSignal, Qt, QSize, QRectF
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout,
-    QLabel, QFrame, QSizePolicy,
-)
-from PyQt6.QtGui import QPixmap, QIcon, QImage, QFont, QColor, QPainter, QBrush
+from PyQt6.QtCore import QThread, pyqtSignal, Qt
+from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QFrame, QSizePolicy
+from PyQt6.QtGui import QPixmap, QIcon, QImage, QFont
 from src.radar.parse import RadarConfig
 from src.utils.theme import (
     ICON_PATH, SETTINGS_PATH, ROOT_DIR,

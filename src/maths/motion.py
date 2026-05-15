@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from src.data.types import Frame, NAME_TO_ID
+from scipy.signal import find_peaks
 
 # ── 1. Vector Extraction Helpers ─────────────────────────────────────────────
 
@@ -142,11 +143,14 @@ def calculate_trunk_lean(f: Frame) -> tuple[float, float]:
 
 def compute_all_metrics(f: Frame) -> dict:
     """Calculates all core postural metrics for a single frame."""
-    lean_x, lean_z = calculate_trunk_lean(f)
+    lean_x, _ = calculate_trunk_lean(f)
+    
+    la = _get_vec(f, "left_ankle")
+    ra = _get_vec(f, "right_ankle")
+    ankle_dist = float(np.linalg.norm(la - ra)) if la is not None and ra is not None else 0.0
     
     metrics = {
         'lean_x': lean_x,   # Stable 2D (Side-to-Side)
-        'lean_z': lean_z,   # Depth-based (Forward/Back) - Noisy
         
         'l_knee': calculate_joint_angle(f, "left_hip", "left_knee", "left_ankle"),
         'r_knee': calculate_joint_angle(f, "right_hip", "right_knee", "right_ankle"),
@@ -161,18 +165,37 @@ def compute_all_metrics(f: Frame) -> dict:
         'r_elb':  calculate_joint_angle(f, "right_shoulder", "right_elbow", "right_wrist"),
         
         # Center of Mass proxy
-        'com_y': _get_trunk_midpoints(f)[0][1] if _get_trunk_midpoints(f)[0] is not None else 0.0
+        'com_y': _get_trunk_midpoints(f)[0][1] if _get_trunk_midpoints(f)[0] is not None else 0.0,
+        'drift_x': _get_trunk_midpoints(f)[0][0] if _get_trunk_midpoints(f)[0] is not None else 0.0,
+        'ankle_dist': ankle_dist
     }
     
-    # Symmetry Indices
-    pairs = [('knee', 'l_knee', 'r_knee'), ('hip', 'l_hip', 'r_hip'), 
-             ('sho', 'l_sho', 'r_sho'), ('elb', 'l_elb', 'r_elb')]
-    
-    for name, l_key, r_key in pairs:
-        l_val, r_val = metrics[l_key], metrics[r_key]
-        metrics[f'sym_{name}'] = 100.0 * (r_val - l_val) / (max(1.0, (l_val + r_val) / 2.0))
-            
     return metrics
+
+def calculate_spm(df: pd.DataFrame) -> float:
+    """Calculates Steps Per Minute (Cadence) using Ankle Distance (ankle_dist)"""
+    if 'ankle_dist' not in df.columns or len(df) < 60:
+        return 0.0
+    
+    # Smooth the signal to remove noise
+    y_smooth = df['ankle_dist'].rolling(10, center=True).mean().fillna(0).values
+    
+    # Normalize
+    y_norm = y_smooth - np.mean(y_smooth)
+    
+    # Find peaks. We look for peaks because we are counting oscillations.
+    # Distance of 10 assumes at least 1/3 second between footfalls at 30fps.
+    peaks, _ = find_peaks(y_norm, distance=10)
+    
+    if len(peaks) < 2: return 0.0
+    
+    num_steps = len(peaks)
+    time_min = (df['timestamp'].iloc[-1] - df['timestamp'].iloc[0]) / 60.0
+    
+    if time_min == 0: return 0.0
+    
+    spm = num_steps / time_min
+    return float(spm)
 
 def calculate_session_trends(df: pd.DataFrame) -> dict:
     """
@@ -185,7 +208,8 @@ def calculate_session_trends(df: pd.DataFrame) -> dict:
     # Convert time to minutes for readable slopes
     x = (df['timestamp'] - df['timestamp'].iloc[0]).values / 60.0
     
-    cols_to_analyze = ['lean_x', 'lean_z', 'l_knee', 'r_knee', 'sym_knee', 'sym_hip', 'l_hip', 'r_hip', 'l_sho', 'r_sho']
+    cols_to_analyze = ['lean_x', 'drift_x', 'l_knee', 'r_knee', 'l_hip', 'r_hip', 'l_sho', 'r_sho', 
+                       'l_knee_rom', 'r_knee_rom', 'l_hip_rom', 'r_hip_rom', 'l_sho_rom', 'r_sho_rom']
     for col in cols_to_analyze:
         if col in df.columns:
             y = df[col].values
@@ -216,6 +240,13 @@ def generate_analysis_report(session):
     cols = ['timestamp', 'frame'] + [c for c in df_ts.columns if c not in ['timestamp', 'frame']]
     df_ts = df_ts[cols]
     
+    # Calculate rolling ROM (assuming ~30fps, 1 second window)
+    for col in ['l_knee', 'r_knee', 'l_hip', 'r_hip', 'l_sho', 'r_sho', 'l_elb', 'r_elb']:
+        if col in df_ts.columns:
+            roll_max = df_ts[col].rolling(window=30, min_periods=1, center=True).max()
+            roll_min = df_ts[col].rolling(window=30, min_periods=1, center=True).min()
+            df_ts[f'{col}_rom'] = roll_max - roll_min
+    
     # Statistical Summary
     df_stats = df_ts.drop(columns=['timestamp', 'frame']).describe()
     
@@ -223,5 +254,8 @@ def generate_analysis_report(session):
     trends = calculate_session_trends(df_ts)
     for k, v in trends.items():
         df_stats.loc['mean', k] = v
+        
+    # Add Session SPM
+    df_stats.loc['mean', 'SPM'] = calculate_spm(df_ts)
     
     return df_ts, df_stats
