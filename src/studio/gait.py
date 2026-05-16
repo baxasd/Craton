@@ -110,9 +110,9 @@ def render_preparation():
     
     if st.session_state.get('raw_df') is None:
         st.markdown("""<style>[data-testid="stSidebar"] {display: none;}</style>""", unsafe_allow_html=True)
-        col1, col2 = st.columns(2)
+        _, col2, _ = st.columns([1,2,1])
         
-        with col1:
+        with col2:
             with st.container(border=True):
                 st.markdown("<h3 style='text-align: center;'>Import Raw Dataset</h3>", unsafe_allow_html=True)
                 st.markdown("<p style='text-align: center; color: #666;'>Upload raw tracking data to run the DSP cleaning pipeline.</p>", unsafe_allow_html=True)
@@ -135,7 +135,9 @@ def render_preparation():
                         st.session_state.clean_df = None 
                         st.rerun()
 
-        with col2:
+            with st.container():
+                st.markdown("<h3 style='text-align: center;'>OR</h3>", unsafe_allow_html=True)
+
             with st.container(border=True):
                 st.markdown("<h3 style='text-align: center;'>Import Cleaned Dataset</h3>", unsafe_allow_html=True)
                 st.markdown("<p style='text-align: center; color: #666;'>Upload a previously cleaned dataset to bypass preparation.</p>", unsafe_allow_html=True)
