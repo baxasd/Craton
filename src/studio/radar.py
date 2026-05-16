@@ -25,36 +25,16 @@ _ANALYSIS_VERSION = "v5"
 # CORE ANALYSIS LOGIC
 # =====================================================================
 
-def analyze_gait_performance(time, velocity, cfg):
+def analyze_gait_performance(time, velocity, peak_range, cfg):
     """
     Analyze radar micro-Doppler centroid velocity for a treadmill runner.
 
     Parameters
     ----------
-    time     : np.ndarray  — time axis in seconds
-    velocity : np.ndarray  — raw Doppler centroid (radar units)
-    cfg      : dict        — all tunable parameters from the UI sidebar
-
-    Signal model
-    ------------
-    The Doppler centroid from a rear-facing radar pointed at a treadmill
-    has two overlapping contributions:
-
-      1. Treadmill belt  — continuous negative Doppler (belt surface moves
-                           away from radar). Creates a negative DC offset.
-      2. Runner's legs   — periodic positive Doppler swings as each foot
-                           pushes off toward the radar.
-
-    The result is a signal with a non-zero DC level (positive or negative
-    depending on which return dominates) with the step rhythm sitting in
-    the AC band on top. We must separate these before doing any detection.
-
-    Strategy
-    --------
-    - Apply bandpass (hp_cutoff → lp_cutoff Hz) to isolate gait oscillation.
-    - Run find_peaks on this zero-mean AC component.
-    - Run Welch PSD on the AC component to find stride frequency.
-    - Use raw smoothed signal only for spectrogram overlay display.
+    time       : np.ndarray  — time axis in seconds
+    velocity   : np.ndarray  — raw Doppler centroid (radar units)
+    peak_range : np.ndarray  — raw range peak (m)
+    cfg        : dict        — all tunable parameters from the UI sidebar
     """
     v_raw = velocity * cfg["velocity_scale"]
     dt    = float(np.mean(np.diff(time))) if len(time) > 1 else 0.1
@@ -138,7 +118,7 @@ def analyze_gait_performance(time, velocity, cfg):
     # ------------------------------------------------------------------
     window_size   = max(1, int(fs * 2.0)) 
     smoothed_disp = uniform_filter1d(displacement, size=window_size)
-    disp_sd       = float(np.std(displacement))
+    disp_sd       = float(np.std(smoothed_disp))
     drift_limit   = cfg["drift_thresh_factor"] * disp_sd
 
     drifts        = smoothed_disp < -drift_limit
@@ -194,6 +174,7 @@ def analyze_gait_performance(time, velocity, cfg):
         "v_ac":                  v_ac,
         "displacement":          displacement,
         "smoothed_disp":         smoothed_disp,
+        "peak_range":            peak_range,
         # detection
         "peaks":                 peaks,
         "step_set_a":            set_a,
@@ -219,7 +200,7 @@ def analyze_gait_performance(time, velocity, cfg):
 # =====================================================================
 
 def create_gait_plotly_figures(r):
-    """Three gait analysis plots. All detection uses v_ac (AC component)."""
+    """Four gait analysis plots. All detection uses v_ac (AC component)."""
 
     time = r["time"]
     v_ac = r["v_ac"]
@@ -227,6 +208,7 @@ def create_gait_plotly_figures(r):
     peaks = r["peaks"]
     idx_a = r["step_set_a"]
     idx_b = r["step_set_b"]
+    peak_range = r["peak_range"]
 
     _layout = dict(height=300, margin=dict(l=0, r=0, t=40, b=0))
 
@@ -260,7 +242,8 @@ def create_gait_plotly_figures(r):
         x=time, y=disp,
         name="Raw Displacement",
         line=dict(color="blue", width=1),
-        opacity=0.3
+        opacity=0.3,
+        visible='legendonly'
     ))
     fig2.add_trace(go.Scatter(
         x=time, y=r["smoothed_disp"],
@@ -303,7 +286,22 @@ def create_gait_plotly_figures(r):
         **_layout,
     )
 
-    return fig1, fig2, fig3
+    # ------------------------------------------------------------------
+    # Figure 4 — Raw Distance Noise (Limb Swing)
+    # ------------------------------------------------------------------
+    fig4 = go.Figure()
+    fig4.add_trace(go.Scatter(
+        x=time, y=peak_range,
+        name="Raw Peak Range",
+        line=dict(color="purple", width=1),
+    ))
+    fig4.update_layout(
+        title="Raw Distance Noise (visualizing limb swing / distance jitter)",
+        xaxis_title="Time (s)", yaxis_title="Distance (m)",
+        **_layout,
+    )
+
+    return fig1, fig2, fig3, fig4
 
 
 # =====================================================================
@@ -331,8 +329,8 @@ def process_radar_data(file_bytes, range_lo, range_hi, smooth_window, cfg_tuple)
             radar_cfg = None
 
         session              = RecordingSession(tmp_path, radar_cfg)
-        spec, t_axis, v_axis, centroid = session.build_spectrogram(range_lo, range_hi, smooth_window)
-        gait_results         = analyze_gait_performance(t_axis, centroid, cfg)
+        spec, t_axis, v_axis, centroid, peak_range = session.build_spectrogram(range_lo, range_hi, smooth_window)
+        gait_results         = analyze_gait_performance(t_axis, centroid, peak_range, cfg)
         fps                  = session.num_frames / session.duration_s if session.duration_s > 0 else 0.0
         dop_res              = radar_cfg.dopRes if radar_cfg else 0.0
 
@@ -532,7 +530,8 @@ def render():
             "Phase A/B are oscillatory proxies — single-point radar cannot identify true left/right limbs. "
             "Displacement is a relative proxy, not absolute position."
         )
-        f1, f2, f3 = create_gait_plotly_figures(gait)
+        f1, f2, f3, f4 = create_gait_plotly_figures(gait)
         st.plotly_chart(f1, use_container_width=True)
         st.plotly_chart(f2, use_container_width=True)
         st.plotly_chart(f3, use_container_width=True)
+        st.plotly_chart(f4, use_container_width=True)

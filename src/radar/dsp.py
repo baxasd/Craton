@@ -93,7 +93,11 @@ class RecordingSession:
         t0 = self.timestamps[0]
         t_axis = np.array([t - t0 for t in self.timestamps], dtype=np.float32)
 
-        return spec_db, t_axis, v_axis_highres, centroid
+        # Extract raw peak range
+        range_profile_2d = frames_3d[:, lo_bin:hi_bin, :].max(axis=2)
+        peak_range_m = (np.argmax(range_profile_2d, axis=1) + lo_bin) * cfg.rangeRes
+
+        return spec_db, t_axis, v_axis_highres, centroid, peak_range_m
 
 # Gait Extraction
 def extract_gait_metrics(spec: np.ndarray, t_axis: np.ndarray, v_axis: np.ndarray) -> tuple[float, float, float]:
